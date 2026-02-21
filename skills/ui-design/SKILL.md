@@ -23,6 +23,70 @@ Do not mix the two systems. Pick one per application and be consistent.
 
 ---
 
+## Visual standards
+
+These rules apply regardless of whether you are using Mantine or Tailwind. They express the difference between an interface that looks considered and one that looks generated. Follow them without exception.
+
+### Typography
+
+- Establish a scale of at least three distinct sizes: heading, body, and label/caption. Never use a single font size throughout a UI.
+- Body text uses a line height of 1.5. Headings use 1.2–1.3.
+- Constrain line length for readable text to 60–80 characters (`max-w-prose` in Tailwind, `maw` in Mantine). Never let paragraphs stretch full width.
+- Heading hierarchy is meaningful and sequential — do not skip levels (h1 → h3) or use heading tags for visual size alone.
+- Use font weight to establish hierarchy: one heavy weight for primary headings, one medium weight for subheadings, regular for body. Do not use more than three weights on a single screen.
+
+### Spacing
+
+- Derive all spacing from a base-8 scale: 4, 8, 16, 24, 32, 48, 64px. No arbitrary values.
+- Spacing between related elements is smaller than spacing between unrelated elements. A label and its input are closer together than two separate form fields.
+- Every section of a page has clear breathing room. Content that is cramped to the edges reads as unfinished.
+- Padding inside a container is consistent on all sides unless there is a deliberate reason to differ.
+
+### Colour
+
+- Every UI has one primary action colour used consistently for all primary buttons and key interactive elements. It does not appear decoratively.
+- Limit accent colours to two or three across the entire interface. More than three competing colours creates visual noise.
+- Background, surface, and border colours form a clear hierarchy: page background is the darkest (or lightest), cards/panels sit one step above, inputs and interactive surfaces one step above that.
+- Never use colour alone to convey meaning — pair it with an icon, label, or pattern. This applies to status indicators, validation states, and charts.
+- All text meets WCAG AA contrast minimums: 4.5:1 for body text, 3:1 for large text and UI components.
+
+### Visual hierarchy
+
+- Every screen has one primary action. It is visually dominant. Secondary actions are visually subordinate.
+- The most important content on a page has the most visual weight — through size, contrast, or position, not decoration.
+- Decorative elements (dividers, background patterns, icons used ornamentally) are subtle. They must never compete with content.
+- Empty space is intentional. Do not fill it. Whitespace is structure.
+
+### Interactive elements
+
+- Every button, link, input, and interactive element has four explicit states: default, hover, focus, and disabled. None of these are left to browser defaults alone.
+- Focus states are always visible and never suppressed with `outline: none` without a replacement style.
+- Primary buttons are filled. Secondary buttons are outlined or ghost. Destructive actions use a distinct colour (typically red). These conventions are consistent throughout the application.
+- Click targets for interactive elements are at minimum 44×44px on touch surfaces.
+
+### Iconography
+
+- Icons are used to reinforce meaning, not replace text in ambiguous contexts. If an icon's meaning is not immediately obvious, it has a visible label or tooltip.
+- Icon sizes are consistent within a context — navigation icons are all the same size, inline icons are all the same size.
+- Icons are sourced from a single library throughout the application. Do not mix icon sets.
+
+### Forms
+
+- Every input has a visible label above it. Placeholder text is not a substitute for a label.
+- Validation errors appear adjacent to the field they relate to, not only at the top of the form.
+- Required fields are marked consistently — either all required fields are marked, or all optional fields are marked. Never both.
+- Submission buttons are disabled or show a loading state while a request is in flight.
+- Multi-field forms group related fields visually (billing address fields together, personal info together).
+
+### Feedback and communication
+
+- Every user action that triggers an async operation shows a loading indicator scoped to that action, not a full-page spinner.
+- Success and error feedback is specific. "Profile updated" beats "Success". "Email already in use" beats "Error".
+- Destructive actions (delete, archive, revoke) require confirmation. The confirmation UI names the specific thing being destroyed.
+- Toasts and notifications are used for transient feedback. Persistent errors live inline near the relevant content.
+
+---
+
 ## Component design principles
 
 **One component, one responsibility.** A component should do one thing at one level of abstraction. If a component manages data fetching, layout, and user interaction simultaneously, break it apart.
