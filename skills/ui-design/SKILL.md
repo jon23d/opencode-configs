@@ -233,9 +233,23 @@ pnpm add -D @playwright/test
 pnpm exec playwright install chromium --with-deps
 ```
 
+### Screenshots must capture the full interaction, not just the page load
+
+Before deciding what to screenshot, think through the complete user interaction your change introduced or affected. The default page state is only a baseline. The screenshots that actually demonstrate the feature are the ones taken during the interaction — after a button click, after a field reveals, after validation fires, after a success state appears.
+
+Ask yourself: **what would a reviewer need to see to confirm this feature works?** Take screenshots of those states. There will often be several.
+
+Common interaction states to capture:
+- The default page state on arrival
+- A revealed input, panel, or section after a button click
+- An open modal, drawer, or dropdown
+- A validation error state after a failed submission
+- A success confirmation after a completed action
+- Intermediate steps in a multi-step flow
+
 ### Workflow
 
-1. **Start the dev server** if it is not already running. Use the project's `dev` script:
+1. **Start the dev server** if it is not already running:
 
    ```bash
    pnpm dev &
@@ -244,63 +258,73 @@ pnpm exec playwright install chromium --with-deps
 
    Wait for the server to be ready before proceeding. Poll the base URL until it responds or time out after 30 seconds.
 
-2. **Identify the routes affected by your changes.** Screenshot every route you modified, created, or that is visually adjacent to the changes (e.g. a list view when you changed a detail view).
+2. **Think through the interaction** your change introduces. Identify every state a reviewer would need to see to confirm the feature works.
 
-3. **Take screenshots** using a Playwright script. Save screenshots to `agent-logs/screenshots/` with descriptive filenames:
+3. **Take screenshots** using a Playwright script, scripting each interaction step before capturing:
 
-   ```bash
-   pnpm exec playwright screenshot \
-     --browser chromium \
-     http://localhost:PORT/your-route \
-     agent-logs/screenshots/YYYY-MM-DD_task-name_route-name.png
-   ```
-
-   For routes that require authentication or specific state, write a minimal Playwright script inline:
-
-   ```bash
-   pnpm exec node --input-type=module <<'EOF'
+   ```js
    import { chromium } from '@playwright/test'
    const browser = await chromium.launch()
    const page = await browser.newPage()
    await page.setViewportSize({ width: 1280, height: 800 })
-   // set up any required state here (cookies, localStorage, etc.)
    await page.goto('http://localhost:PORT/your-route')
    await page.waitForLoadState('networkidle')
-   await page.screenshot({ path: 'agent-logs/screenshots/YYYY-MM-DD_task-name_route-name.png', fullPage: true })
+
+   // Default state
+   await page.screenshot({ path: 'agent-logs/.../home_default_desktop.png', fullPage: true })
+
+   // After clicking the trigger
+   await page.click('button:has-text("Add Item")')
+   await page.waitForSelector('label:has-text("Item name")')
+   await page.screenshot({ path: 'agent-logs/.../home_item-form-open_desktop.png', fullPage: true })
+
+   // After triggering validation
+   await page.click('button:has-text("Save")')
+   await page.waitForSelector('text=Item name is required')
+   await page.screenshot({ path: 'agent-logs/.../home_validation-error_desktop.png', fullPage: true })
+
    await browser.close()
-   EOF
    ```
 
-4. **Stop the dev server** if you started it:
+   Repeat at mobile viewport (390×844) for states where responsive behaviour is relevant.
+
+4. **Stop the dev server**:
 
    ```bash
    kill $DEV_PID 2>/dev/null
    ```
 
-5. **Reference the screenshots in the task log.** Add an image reference to the markdown log file for each screenshot taken:
+5. **Reference all screenshots in the task log**:
 
    ```markdown
    ## Screenshots
 
-   ![Route name](./screenshots/YYYY-MM-DD_task-name_route-name.png)
+   ![Default state](./home_default_desktop.png)
+   ![Item form open](./home_item-form-open_desktop.png)
+   ![Validation error](./home_validation-error_desktop.png)
    ```
 
-### Naming convention
+### File structure and naming
 
-Screenshots follow the same date and task name as the log file, with the route appended:
+All task output lives in a single folder. Screenshots sit alongside the task log, named to describe the UI state they show:
 
 ```
-logs/
-  2024-03-15_add-user-profile.md
-  screenshots/
-    2024-03-15_add-user-profile_profile-page.png
-    2024-03-15_add-user-profile_settings-page.png
+agent-logs/
+  2024-03-15-14-32_add-item-input/
+    task.md
+    home_default_desktop.png
+    home_item-form-open_desktop.png
+    home_item-form-open_mobile.png
+    home_validation-error_desktop.png
+    home_item-saved_desktop.png
 ```
+
+Name screenshots as `route_state-description_viewport.png`. The state description should be specific enough that someone reading the task log knows what they're about to see before opening the image.
 
 ### What to screenshot
 
-- Every route you created
-- Every route whose layout, components, or data display you modified
-- Both desktop (1280×800) and mobile (390×844) viewports if the changes affect responsive behaviour
+- Every route you created or modified
+- Every meaningful UI state within those routes, not just the page load
+- Mobile viewport for any states where responsive behaviour is relevant
 
-Do not screenshot routes you did not touch.
+Do not screenshot routes you did not touch. Do not take a single page-load screenshot and call it done if the feature only appears after interaction.

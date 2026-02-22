@@ -23,13 +23,13 @@ A task is complete when ALL of the following are true:
 4. The `code-reviewer` has returned a verdict of `"pass"` or `"pass_with_issues"` with no `critical` or `major` issues
 5. The `security-reviewer` subagent has been invoked with the full contents of every modified or created file
 6. The `security-reviewer` has returned a verdict of `"pass"` or `"pass_with_issues"` with no `critical` or `major` issues
-7. If any frontend files were created or modified: screenshots have been taken of every modified or created route at desktop (1280×800) and mobile (390×844), saved to `agent-logs/screenshots/YYYY-MM-DD_task-name_route-name_desktop.png` and `agent-logs/screenshots/YYYY-MM-DD_task-name_route-name_mobile.png`, and each screenshot is referenced in the task log
-8. A task log has been written to `agent-logs/YYYY-MM-DD_HH-MM_task-name.md`
+7. If any frontend files were created or modified: screenshots have been taken per the `ui-design` skill and saved to `agent-logs/YYYY-MM-DD-HH-MM_task-name/`, with each screenshot referenced in the task log
+8. A task log has been written to `agent-logs/YYYY-MM-DD-HH-MM_task-name/task.md`
 9. A Telegram notification has been sent
 
 If you have written or modified code and have not yet invoked both reviewers, you are not done. Do not summarise. Do not ask what to do next. Do not say the task is complete. Invoke the reviewers first.
 
-If both reviewers have passed but frontend files were created or modified and no screenshots exist in `agent-logs/screenshots/`, you are not done. Do not write the task log yet. Take the screenshots first.
+If both reviewers have passed but frontend files were created or modified and no screenshots exist in the task folder, you are not done. Do not write the task log yet. Take the screenshots first.
 
 If both reviewers have passed and screenshots exist (or no frontend files were touched), but no log file exists, you are still not done. Write the log first.
 
@@ -74,24 +74,6 @@ Before writing any code, read the relevant existing code. Understand the pattern
 ## Running tests
 
 Always run tests using `pnpm test`. Never invoke the test runner directly with `vitest`, `jest`, or any other command. The `pnpm test` script is the source of truth — it runs linting, type checking, and tests together. A passing `vitest` run is not a passing test suite.
-
-## Screenshot workflow
-
-This applies whenever any frontend file is created or modified. It is not optional. Do not skip it because the change was small or the route was already tested.
-
-When your code changes are complete and all tests pass:
-
-1. Check whether `@playwright/test` is installed. If not: `pnpm add -D @playwright/test && pnpm exec playwright install chromium --with-deps`
-2. Start the dev server in the background and capture its PID: `pnpm dev & echo $!`
-3. Wait for the server to be ready — poll the local URL until it responds, with a 30-second timeout
-4. For each route that was created or modified, take two screenshots using Playwright:
-   - Desktop: viewport 1280×800, saved to `agent-logs/screenshots/YYYY-MM-DD_task-name_route-name_desktop.png`
-   - Mobile: viewport 390×844, saved to `agent-logs/screenshots/YYYY-MM-DD_task-name_route-name_mobile.png`
-5. Kill the dev server using the captured PID
-6. Confirm the screenshot files exist on disk before proceeding
-7. Reference every screenshot by filename in the task log
-
-If the dev server fails to start or screenshots fail to save, note the error in the task log. Do not silently skip the screenshots and call the task done.
 
 ## Testing
 
@@ -157,16 +139,9 @@ When you have written or modified any code:
 
 ## Notifications
 
-After writing the task log, send a Telegram notification as the final action:
+After writing the task log, call the `send-telegram` tool as the final action:
 
-```bash
-if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-  curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-    -H "Content-Type: application/json" \
-    -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"✅ Task complete: TASK_NAME\"}"
-fi
-```
+- On success: `send-telegram("✅ Task complete: TASK_NAME")`
+- If blocked: `send-telegram("🚫 Task blocked: TASK_NAME")`
 
-Replace `TASK_NAME` with the actual task name. If the task ended blocked rather than complete, send `🚫 Task blocked: TASK_NAME` instead.
-
-If `TELEGRAM_BOT_TOKEN` or `TELEGRAM_CHAT_ID` are not set, skip this step silently.
+Replace `TASK_NAME` with the actual task name. Append the result returned by the tool to the task log — it will be either "Notification sent" or "Telegram not configured — skipping notification".
