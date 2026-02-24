@@ -28,11 +28,11 @@ Always use dependency injection in backend code. Never use DI in React component
 A coding task is NEVER complete until all of the following are true:
 
 1. A failing test was written before any implementation code
-2. All tests pass — verified by running `pnpm test`, not by invoking the test runner directly
+2. All tests pass — verified by running `pnpm test`
 3. The `code-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
 4. The `security-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
-5. If any frontend files were created or modified: screenshots exist in `agent-logs/screenshots/` for every modified or created route
-6. A task log file has been written to `agent-logs/YYYY-MM-DD_task-name.md`
+5. Screenshots have been taken of all UI changes
+6. A task log has been written
 7. A Telegram notification has been sent
 
 If you have written code and have not yet invoked both reviewers, you have not
@@ -47,13 +47,3 @@ the task. Write the log file first.
 If you are about to write implementation code and there is no failing test for
 that code, stop. Write the test first. There are no exceptions. Do not write
 implementation code that is not demanded by a failing test.
-
-## Task logging
-
-A task is not complete until a log file has been written.
-
-After every task, write a file to `agent-logs/YYYY-MM-DD_HH-MM_task-name.md` with:
-- The prompt given
-- A bullet list of actions taken
-- Files created or modified
-- The output of the final code review subagent runs, including any issues found and how they were resolved

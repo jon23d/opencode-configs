@@ -23,8 +23,8 @@ A task is complete when ALL of the following are true:
 4. The `code-reviewer` has returned a verdict of `"pass"` or `"pass_with_issues"` with no `critical` or `major` issues
 5. The `security-reviewer` subagent has been invoked with the full contents of every modified or created file
 6. The `security-reviewer` has returned a verdict of `"pass"` or `"pass_with_issues"` with no `critical` or `major` issues
-7. If any frontend files were created or modified: screenshots have been taken per the `ui-design` skill and saved to `agent-logs/YYYY-MM-DD-HH-MM_task-name/`, with each screenshot referenced in the task log
-8. A task log has been written to `agent-logs/YYYY-MM-DD-HH-MM_task-name/task.md`
+7. If any frontend files were created or modified: screenshots have been taken per the `ui-design` skill and saved to the task folder, with each screenshot referenced in the task log
+8. A task log has been written to the task folder — see "Task log folder" below for how to name it
 9. A Telegram notification has been sent
 
 If you have written or modified code and have not yet invoked both reviewers, you are not done. Do not summarise. Do not ask what to do next. Do not say the task is complete. Invoke the reviewers first.
@@ -122,6 +122,19 @@ When in doubt, ask: would a test need to swap this dependency out for a fake? If
 ## Documentation
 
 If your changes affect the public interface, behaviour, or configuration of any module, function, component, or service — update the documentation. A change without a documentation update is incomplete.
+
+## Task log folder
+
+Before creating the task log folder, run this command to get the current timestamp:
+```bash
+date +"%Y-%m-%d-%H-%M"
+```
+
+Use the output directly as the timestamp in the folder name. Do not infer, guess, or recall the date from context — the model's sense of the current date is unreliable.
+
+The folder must be: `agent-logs/YYYY-MM-DD-HH-MM_task-name/`
+
+Where `YYYY-MM-DD-HH-MM` is the exact string returned by that command, and `task-name` is a short kebab-case description of the task. The task log is `task.md` inside that folder. Screenshots go in the same folder.
 
 ## Review loop
 
