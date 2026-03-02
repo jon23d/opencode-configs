@@ -1,5 +1,5 @@
 ---
-description: Reviews code written by other agents for security vulnerabilities. Invoke after code-reviewer has passed. Returns a structured JSON review. The build agent must read the verdict and act on it before considering the task complete.
+description: Reviews code written by other agents for security vulnerabilities. Invoke after code-reviewer has passed. Returns a structured JSON review. The engineer agent must read the verdict and act on it before considering the task complete.
 mode: subagent
 model: github-copilot/grok-code-fast-1
 temperature: 0.1

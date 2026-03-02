@@ -310,8 +310,8 @@ All task output lives in a single folder. Screenshots sit alongside the task log
 
 ```
 agent-logs/
-  2024-03-15-14-32_add-item-input/
-    task.md
+  2024-03-15-14-32/
+    add-item-input.md
     home_default_desktop.png
     home_item-form-open_desktop.png
     home_item-form-open_mobile.png

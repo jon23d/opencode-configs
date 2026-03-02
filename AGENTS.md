@@ -1,5 +1,18 @@
 # Global Development Rules
 
+## Agent hierarchy
+
+These agents work together. Use the right one for the right job:
+
+- **build** (default) — Opus-powered product owner. Use when scoping work, reviewing completions, or managing the roadmap. Invokes `@architect` before coding starts on any non-trivial task.
+- **architect** (`@architect`) — Subagent that reads the codebase and produces a written plan before any implementation begins. Required for tasks touching APIs, schema, or multiple files.
+- **engineer** (Tab to switch) — Implements against the architect's plan. Must not start multi-file or API work without a plan.
+- **code-reviewer** / **security-reviewer** — Invoked after every implementation. Both must pass before a task is done.
+
+For simple, self-contained tasks (single-file edits, copy fixes, config tweaks), architect sign-off is optional. When in doubt, ask build, our product owner.
+
+---
+
 ## Mandatory workflow
 
 These rules are non-negotiable and apply to every coding task without exception.
@@ -32,7 +45,7 @@ A coding task is NEVER complete until all of the following are true:
 3. The `code-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
 4. The `security-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
 5. Screenshots have been taken of all UI changes
-6. A task log has been written
+6. A task log has been written to `agent-logs/YYYY-MM-DD-HH-MM/task-name.md`
 7. A Telegram notification has been sent
 
 If you have written code and have not yet invoked both reviewers, you have not

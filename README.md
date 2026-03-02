@@ -36,7 +36,8 @@ and TELEGRAM_CHAT_ID. See TELEGRAM_SETUP.md for setup instructions.
 ├── AGENTS.md                    # Global development rules (workflow, definition of done)
 ├── package.json                 # Dependencies (currently just @opencode-ai/plugin)
 ├── agents/
-│   ├── build.md                 # Primary development agent configuration
+|   ├── build.md                 # Product owner agent configuration
+│   ├── engineer.md              # Softwared engineer subagent configuration
 │   ├── code-reviewer.md         # Code review subagent configuration
 │   └── security-reviewer.md     # Security review subagent configuration
 ├── skills/
@@ -57,19 +58,30 @@ and TELEGRAM_CHAT_ID. See TELEGRAM_SETUP.md for setup instructions.
 This repository defines three agent types that OpenCode uses:
 
 1. **Build Agent** (`agents/build.md`)
+   - The product owner agent
+   - Determines what to work on
+   - Coordinates with architect, engineer, coded reviewer, and security reviewer agents
+   - Updates roadmap
+
+2. **Engineer Agent** (`agents/engineer.md`)
    - The primary development agent
    - Implements features, fixes bugs, writes tests
    - Follows TDD workflow without exception
    - Must invoke code-reviewer and security-reviewer after every code change
    - Responsible for task logging and notifications
+  
+3. **Architect Agent** (`agents/architect.md`)
+   - Lead engineer and technical architect
+   - Produces detailed implementation plans, API designs, and data models prior to code being written
+   - Read-only, this agent only creates plans
 
-2. **Code Reviewer** (`agents/code-reviewer.md`)
+4. **Code Reviewer** (`agents/code-reviewer.md`)
    - Reviews code for correctness, security, performance, maintainability
    - Enforces project standards (testing, OpenAPI, documentation)
    - Returns structured JSON verdict
    - Runs as a subagent after the build agent completes
 
-3. **Security Reviewer** (`agents/security-reviewer.md`)
+5. **Security Reviewer** (`agents/security-reviewer.md`)
    - Dedicated security review
    - Focuses on input validation, auth, secrets, injection, data exposure
    - Returns structured JSON verdict
@@ -114,7 +126,7 @@ A task is never complete until ALL of these are true:
 3. Code-reviewer returns "pass" or "pass_with_issues" (no critical/major issues)
 4. Security-reviewer returns "pass" or "pass_with_issues" (no critical/major issues)
 5. Screenshots exist for all UI changes
-6. Task log written to `agent-logs/YYYY-MM-DD_HH-MM_task-name.md`
+6. Task log written to `agent-logs/YYYY-MM-DD-HH-MM/task-name.md`
 7. Telegram notification sent
 
 ## Modifying This Repository
