@@ -2,14 +2,15 @@
 
 ## Agent hierarchy
 
-These agents work together. Use the right one for the right job:
+These agents work together. **Build is the orchestrator** — it delegates to other agents and they report back.
 
-- **build** (default) — Opus-powered product owner. Use when scoping work, reviewing completions, or managing the roadmap. Invokes `@architect` before coding starts on any non-trivial task.
-- **architect** (`@architect`) — Subagent that reads the codebase and produces a written plan before any implementation begins. Required for tasks touching APIs, schema, or multiple files.
-- **engineer** (Tab to switch) — Implements against the architect's plan. Must not start multi-file or API work without a plan.
-- **code-reviewer** / **security-reviewer** — Invoked after every implementation. Both must pass before a task is done.
+- **build** (default) — Product owner and orchestrator. Scopes work, delegates, verifies quality gates, manages the roadmap. Invokes all other agents in the correct order.
+- **architect** (`@architect`) — Subagent invoked by build. Reads the codebase and produces a written plan. Required for tasks touching APIs, schema, or multiple files.
+- **engineer** (Tab to switch) — Implements against the architect's plan. Invokes reviewers directly during the coding loop. Reports back to build when reviewers pass.
+- **code-reviewer** / **security-reviewer** — Invoked by engineer after every code change. Both must pass before a task is done.
+- **logger** (`@logger`) — Invoked by build after all quality gates pass. Writes the task log (using the `project-manager` skill) and sends the Telegram notification.
 
-For simple, self-contained tasks (single-file edits, copy fixes, config tweaks), architect sign-off is optional. When in doubt, ask build, our product owner.
+For simple, self-contained tasks (single-file edits, copy fixes, config tweaks), architect sign-off is optional. When in doubt, ask build.
 
 ---
 
@@ -45,15 +46,14 @@ A coding task is NEVER complete until all of the following are true:
 3. The `code-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
 4. The `security-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
 5. Screenshots have been taken of all UI changes
-6. A task log has been written to `agent-logs/YYYY-MM-DD-HH-MM/task-name.md`
-7. A Telegram notification has been sent
+6. The `@logger` agent has written a task log to `agent-logs/YYYY-MM-DD-HH-MM/task-name.md`
+7. The `@logger` agent has sent a Telegram notification (or confirmed it was skipped)
+
+**Responsibility:** Items 1–5 are verified by `engineer` (who invokes the reviewers). Items 6–7 are handled by `@logger` (invoked by `build` after engineer reports success).
 
 If you have written code and have not yet invoked both reviewers, you have not
 finished the task. Do not summarize, do not ask what to do next, do not say the
 task is done. Invoke the reviewers first.
-
-If both reviewers have passed but no log file exists, you have still not finished
-the task. Write the log file first.
 
 ## TDD gate
 

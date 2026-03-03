@@ -33,105 +33,82 @@ and TELEGRAM_CHAT_ID. See TELEGRAM_SETUP.md for setup instructions.
 
 ```
 ./
-├── AGENTS.md                    # Global development rules (workflow, definition of done)
-├── package.json                 # Dependencies (currently just @opencode-ai/plugin)
+├── AGENTS.md                                   # Global development rules (workflow, definition of done)
+├── package.json                                # Dependencies (currently just @opencode-ai/plugin)
 ├── agents/
-|   ├── build.md                 # Product owner agent configuration
-│   ├── engineer.md              # Softwared engineer subagent configuration
-│   ├── code-reviewer.md         # Code review subagent configuration
-│   └── security-reviewer.md     # Security review subagent configuration
+│   ├── build.md                                # Product owner and orchestrator (default agent)
+│   ├── architect.md                            # Technical architect subagent
+│   ├── engineer.md                             # Software engineer (primary, Tab to switch)
+│   ├── logger.md                               # Task logging and notifications subagent
+│   ├── code-reviewer.md                        # Code review subagent
+│   └── security-reviewer.md                    # Security review subagent
 ├── skills/
-│   ├── tdd.md                   # Test-driven development workflow
-│   ├── testing-best-practices.md # Language-specific testing conventions
-│   ├── ui-design.md            # React UI design principles
-│   ├── api-design.md            # REST API design principles
-│   ├── javascript-application-design.md # JS/TS project conventions
-│   └── database-schema-design.md # PostgreSQL/Prisma schema conventions
+│   ├── tdd/SKILL.md                            # Test-driven development workflow
+│   ├── testing-best-practices/SKILL.md         # Language-specific testing conventions
+│   ├── ui-design/SKILL.md                      # React UI design principles
+│   ├── api-design/SKILL.md                     # REST API design principles
+│   ├── javascript-application-design/SKILL.md  # JS/TS project conventions
+│   ├── database-schema-design/SKILL.md         # PostgreSQL/Prisma schema conventions
+│   └── project-manager/SKILL.md                # Roadmap and task logging conventions
 └── tools/
-    └── send-telegram.ts        # Telegram notification tool
+    └── send-telegram.ts                        # Telegram notification tool
 ```
 
 ## How It Affects OpenCode Behavior
 
-### Agent Types
+### Orchestration Model
 
-This repository defines three agent types that OpenCode uses:
+**Build is the orchestrator.** All agents report back to build, and build decides what happens next. Each agent has an "agent contract" at the top of its definition specifying who invokes it, what it expects, what it returns, and who it reports to.
 
-1. **Build Agent** (`agents/build.md`)
-   - The product owner agent
-   - Determines what to work on
-   - Coordinates with architect, engineer, coded reviewer, and security reviewer agents
-   - Updates roadmap
+### Agents
 
-2. **Engineer Agent** (`agents/engineer.md`)
-   - The primary development agent
-   - Implements features, fixes bugs, writes tests
-   - Follows TDD workflow without exception
-   - Must invoke code-reviewer and security-reviewer after every code change
-   - Responsible for task logging and notifications
-  
-3. **Architect Agent** (`agents/architect.md`)
-   - Lead engineer and technical architect
-   - Produces detailed implementation plans, API designs, and data models prior to code being written
-   - Read-only, this agent only creates plans
+1. **Build** (`agents/build.md`) — The default agent. Product owner and orchestrator. Scopes work, invokes other agents in the correct order, verifies quality gates, manages the roadmap.
 
-4. **Code Reviewer** (`agents/code-reviewer.md`)
-   - Reviews code for correctness, security, performance, maintainability
-   - Enforces project standards (testing, OpenAPI, documentation)
-   - Returns structured JSON verdict
-   - Runs as a subagent after the build agent completes
+2. **Architect** (`agents/architect.md`) — Invoked by build for non-trivial tasks. Reads the codebase and produces implementation plans. Read-only — never writes code.
 
-5. **Security Reviewer** (`agents/security-reviewer.md`)
-   - Dedicated security review
-   - Focuses on input validation, auth, secrets, injection, data exposure
-   - Returns structured JSON verdict
-   - Runs after code-reviewer passes
+3. **Engineer** (`agents/engineer.md`) — Implements against plans using TDD. Invokes code-reviewer and security-reviewer during the coding loop. Reports results back to build.
+
+4. **Logger** (`agents/logger.md`) — Invoked by build after all quality gates pass. Loads the `project-manager` skill, writes the task log, and sends the Telegram notification.
+
+5. **Code Reviewer** (`agents/code-reviewer.md`) — Invoked by engineer after code changes. Returns a structured JSON verdict.
+
+6. **Security Reviewer** (`agents/security-reviewer.md`) — Invoked by engineer after code-reviewer passes. Returns a structured JSON security verdict.
 
 ### Skills
 
-Skills are loaded at the start of a task to shape the agent's approach. The build agent loads mandatory skills first, then optional skills based on task type:
+Skills are loaded at the start of a task to shape the agent's approach:
 
-**Mandatory Skills:**
-- `tdd` — Test-driven development workflow (red-green-refactor cycle)
-- `testing-best-practices` — Language-specific testing conventions
+**Mandatory (always loaded by engineer):** `tdd`, `testing-best-practices`
 
-**Optional Skills (loaded based on task):**
-- `ui-design` — React UI design (Mantine for business apps, Tailwind for consumer apps)
-- `api-design` — REST API design principles
-- `database-schema-design` — PostgreSQL/Prisma schema conventions
-- `javascript-application-design` — JS/TS project structure and tooling
+**Optional (loaded based on task type):** `ui-design`, `api-design`, `database-schema-design`, `javascript-application-design`
 
-### Workflow
+**Used by logger:** `project-manager`
 
-When a developer gives OpenCode a task, the agent follows this workflow:
+### Standard Workflow
 
-1. **Load skills** — Based on task type (TDD and testing-best-practices are always loaded)
-2. **Read existing code** — Understand patterns before making changes
-3. **Write failing test first** — Per TDD, no implementation without a failing test
-4. **Implement the minimum** — Make the test pass with the least code possible
-5. **Refactor** — Clean up while tests are green
-6. **Run tests** — Using `pnpm test` (not direct test runner invocation)
-7. **Invoke code-reviewer** — With all modified files
-8. **Invoke security-reviewer** — After code-reviewer passes
-9. **Take screenshots** — For UI changes, capture interaction states
-10. **Write task log** — Document what was done
-11. **Send notification** — Telegram notification on completion
+```
+User Request
+    ↓
+Build (clarify, check roadmap)
+    ↓
+Architect (plan — if non-trivial)
+    ↓
+Build (review plan)
+    ↓
+Engineer (implement with TDD → invoke reviewers)
+    ↓
+Build (verify quality gates)
+    ↓
+Logger (write task log, send notification)
+    ↓
+Build (update roadmap, report to user)
+```
 
 ### Definition of Done
 
-A task is never complete until ALL of these are true:
-
-1. A failing test was written before any implementation code
-2. All tests pass (`pnpm test`)
-3. Code-reviewer returns "pass" or "pass_with_issues" (no critical/major issues)
-4. Security-reviewer returns "pass" or "pass_with_issues" (no critical/major issues)
-5. Screenshots exist for all UI changes
-6. Task log written to `agent-logs/YYYY-MM-DD-HH-MM/task-name.md`
-7. Telegram notification sent
+See `AGENTS.md` for the canonical definition. It is the single source of truth for what constitutes a completed task.
 
 ## Modifying This Repository
-
-If you need to change how OpenCode behaves:
 
 1. **Agent configurations** — Edit files in `agents/` to change agent behavior, tools, or rules
 2. **Skills** — Edit files in `skills/` to change domain-specific conventions
@@ -141,8 +118,6 @@ If you need to change how OpenCode behaves:
 After making changes, verify that OpenCode still functions correctly by running a test task.
 
 ## Dependencies
-
-This repository has a minimal dependency:
 
 ```json
 {
