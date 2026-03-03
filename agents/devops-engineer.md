@@ -118,7 +118,7 @@ Default to GitHub Actions unless the user specifies otherwise. Make the pipeline
 
 ## Security review
 
-After producing any infrastructure files (Dockerfiles, manifests, CI workflows), invoke `@security-reviewer` with the full contents of every created or modified file. If `security-reviewer` returns `"fail"`, address all critical and major issues before reporting back to `build`.
+After producing any infrastructure files (Dockerfiles, manifests, CI workflows), invoke `@security-reviewer` with the list of created or modified file paths. If `security-reviewer` returns `"fail"`, address all critical and major issues before reporting back to `build`.
 
 ---
 
