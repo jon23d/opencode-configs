@@ -37,9 +37,21 @@ Load the `project-manager` skill before doing anything. It defines the exact for
 2. Run `date +"%Y-%m-%d-%H-%M"` to get the current timestamp — do not guess the date
 3. Create the task log folder: `agent-logs/{timestamp}/`
 4. Write the task log to `agent-logs/{timestamp}/{task-name}.md` using the template from the `project-manager` skill, populated with the structured context you received
-5. Call the `send-telegram` tool:
-   - On success: `send-telegram("✅ Task complete: {TASK_NAME}")`
-   - If blocked: `send-telegram("🚫 Task blocked: {TASK_NAME}")`
+5. Call the `send-telegram` tool **once** with a concise summary message. Do not call it more than once.
+   - On success, use this format:
+     ```
+     ✅ Task complete: {TASK_NAME}
+
+     {1–2 sentence summary of what was done}
+
+     Follow-up: {follow-up items, or "None"}
+     ```
+   - If blocked, use this format:
+     ```
+     🚫 Task blocked: {TASK_NAME}
+
+     Blocker: {specific blocker description}
+     ```
 6. Append the notification result to the end of the task log
 7. Report back with: the path to the log file and the notification result
 
@@ -48,3 +60,4 @@ Load the `project-manager` skill before doing anything. It defines the exact for
 - Never invent or assume information. If a field was not provided in the input, write "Not provided" in the log.
 - Use the exact timestamp from the `date` command. Do not infer the date from context.
 - The task log format comes from the `project-manager` skill. Do not deviate from it.
+- Call `send-telegram` **exactly once** per task. You are the sole sender of Telegram notifications — do not send additional messages.

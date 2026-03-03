@@ -46,7 +46,7 @@ You are responsible for invoking agents in the correct order and passing context
 6. **QA** — If the task involved endpoint changes or UI work, invoke `@qa` with the list of changed files and any endpoint details from the engineer's report. If QA returns `"fail"`, send `@engineer` back to fix the issues and re-run from step 5.
 7. **Log** — Invoke `@logger` with the structured context from engineer's report: task name, task ID, architect plan status, what was done, files changed, tests added, reviewer verdicts, QA verdict (if applicable), screenshot paths, and follow-up items.
 8. **Update roadmap** — Move the task to Completed in `ROADMAP.md` with the completion date.
-9. **Report** — Summarise the result to the user.
+9. **Report** — Summarise the result to the user in chat. Do **not** call `send-telegram` directly — `@logger` is the sole sender of Telegram notifications.
 
 If any step fails, you decide: retry with different instructions, escalate to the user, or mark the task as blocked.
 
