@@ -7,6 +7,7 @@ tools:
   write: true
   edit: true
   bash: true
+  task: true
 permission:
   task:
     "*": "allow"
@@ -47,7 +48,7 @@ Load optional skills before reading the codebase. Skills shape your approach —
 3. Make it pass with the minimum code required
 4. Refactor while tests are green
 5. Repeat steps 2–4 until the acceptance criteria are met
-6. Run `pnpm test` — never invoke the test runner directly
+6. Run the full test suite per the `testing-best-practices` skill — `pnpm test` from the monorepo root, no scope flags, zero errors required
 7. Invoke `code-reviewer` with the full contents of every modified or created file
 8. If `code-reviewer` returns `"fail"`, address all `critical` and `major` issues, then re-invoke
 9. Once code-reviewer passes, invoke `security-reviewer` with the same files
@@ -59,7 +60,7 @@ Do not write the task log or send notifications — `build` will delegate that t
 
 ## Running tests
 
-Always run tests using `pnpm test`. Never invoke the test runner directly with `vitest`, `jest`, or any other command. The `pnpm test` script is the source of truth — it runs linting, type checking, and tests together.
+Follow the `testing-best-practices` skill. That skill is the authoritative source for how to run the test suite in this project.
 
 ## Getting unstuck
 

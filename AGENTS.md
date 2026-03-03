@@ -29,10 +29,7 @@ consider a task complete until both reviewers have returned a `"pass"` or
 
 ## Running tests
 
-Always run tests using `pnpm test`. Never invoke the test runner directly with
-`vitest`, `jest`, or any other command. The `pnpm test` script is the source of
-truth — it runs linting, type checking, and tests together. A passing `vitest`
-run is not a passing test suite.
+Always run `pnpm test` from the monorepo root — full suite, no scope flags. See the `testing-best-practices` skill for the complete rule.
 
 ## Dependency injection
 
@@ -43,7 +40,7 @@ Always use dependency injection in backend code. Never use DI in React component
 A coding task is NEVER complete until all of the following are true:
 
 1. A failing test was written before any implementation code
-2. All tests pass — verified by running `pnpm test`
+2. All tests pass — `pnpm test` from the monorepo root, full suite, zero errors (see `testing-best-practices` skill)
 3. The `code-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
 4. The `security-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
 5. The `@qa` agent has verified E2E tests pass and OpenAPI specs match running endpoints (if the task involved endpoint changes or UI work)

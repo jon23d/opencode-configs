@@ -42,7 +42,7 @@ You are responsible for invoking agents in the correct order and passing context
 2. **Check roadmap** — Read `ROADMAP.md` (if it exists) for context on priorities and in-progress work.
 3. **Plan** — Invoke `@architect` for any task touching APIs, schema, or multiple files. Review the plan and push back if it is underspecified or risky.
 4. **Implement** — Invoke `@engineer` with the approved plan and explicit acceptance criteria. For simple tasks (single-file edits, config tweaks, copy fixes), skip the architect and go directly to engineer.
-5. **Verify** — When engineer reports back, confirm: tests pass, both reviewers passed, screenshots exist (if UI work).
+5. **Verify** — When engineer reports back, confirm: the full test suite passed (not a scoped run), both reviewers passed, and screenshots exist (if UI work). Reject the report and send engineer back if the test run was scoped or incomplete.
 6. **QA** — If the task involved endpoint changes or UI work, invoke `@qa` with the list of changed files and any endpoint details from the engineer's report. If QA returns `"fail"`, send `@engineer` back to fix the issues and re-run from step 5.
 7. **Log** — Invoke `@logger` with the structured context from engineer's report: task name, task ID, architect plan status, what was done, files changed, tests added, reviewer verdicts, QA verdict (if applicable), screenshot paths, and follow-up items.
 8. **Update roadmap** — Move the task to Completed in `ROADMAP.md` with the completion date.
@@ -85,11 +85,13 @@ Agents will fall back to their default skills if you do not specify, but explici
 
 A task is NOT done until all conditions in the Definition of Done (see `AGENTS.md`) are satisfied. Your verification checklist:
 
-1. Engineer reports both reviewers passed (no critical or major issues)
-2. QA agent passed (if endpoints or UI were changed)
-3. Screenshots exist for UI changes
-4. Logger confirms the task log was written and notification was sent
-5. Roadmap is updated
+1. Engineer ran the full test suite (`pnpm test` from the monorepo root, no scope flags) and it passed with zero errors. Reject the report if the run was scoped or incomplete.
+2. Engineer reports both reviewers passed (no critical or major issues)
+3. QA agent passed (if endpoints or UI were changed)
+4. Screenshots exist for UI changes
+5. Logger confirms the task log was written and notification was sent
+6. Roadmap is updated
+
 
 ## Communication style
 

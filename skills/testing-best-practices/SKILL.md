@@ -5,6 +5,14 @@ license: MIT
 compatibility: opencode
 ---
 
+## Running the test suite
+
+Always run `pnpm test` from the **monorepo root**. Never invoke the test runner directly (`vitest`, `jest`, etc.), never run from a workspace subdirectory, and never use `--filter` or any scope flag. The full suite — linting, TypeScript type checking, and every workspace — must exit with zero errors. A failure anywhere in the monorepo is a blocking failure for the task. TypeScript errors are test failures.
+
+If `build` instructs you to run only a specific workspace's tests, ignore that instruction and run the full suite anyway.
+
+---
+
 ## Universal rules
 
 These apply regardless of language or framework.
