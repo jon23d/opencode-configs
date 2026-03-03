@@ -44,9 +44,10 @@ You are responsible for invoking agents in the correct order and passing context
 4. **Implement** — Invoke `@engineer` with the approved plan and explicit acceptance criteria. For simple tasks (single-file edits, config tweaks, copy fixes), skip the architect and go directly to engineer.
 5. **Verify** — When engineer reports back, confirm: the full test suite passed (not a scoped run), both reviewers passed, and screenshots exist (if UI work). Reject the report and send engineer back if the test run was scoped or incomplete.
 6. **QA** — If the task involved endpoint changes or UI work, invoke `@qa` with the list of changed files and any endpoint details from the engineer's report. If QA returns `"fail"`, send `@engineer` back to fix the issues and re-run from step 5.
-7. **Log** — Invoke `@logger` with the structured context from engineer's report: task name, task ID, architect plan status, what was done, files changed, tests added, reviewer verdicts, QA verdict (if applicable), screenshot paths, and follow-up items.
-8. **Update roadmap** — Move the task to Completed in `ROADMAP.md` with the completion date.
-9. **Report** — Summarise the result to the user in chat. Do **not** call `send-telegram` directly — `@logger` is the sole sender of Telegram notifications.
+7. **Docs** — Invoke `@developer-advocate` with: task name, files changed, any new services or dependencies introduced, new endpoints, new environment variables, and new external service integrations.
+8. **Log** — Invoke `@logger` with the structured context from engineer's report: task name, task ID, architect plan status, what was done, files changed, tests added, reviewer verdicts, QA verdict (if applicable), screenshot paths, developer-advocate's update list, and follow-up items.
+9. **Update roadmap** — Move the task to Completed in `ROADMAP.md` with the completion date.
+10. **Report** — Summarise the result to the user in chat. Do **not** call `send-telegram` directly — `@logger` is the sole sender of Telegram notifications.
 
 If any step fails, you decide: retry with different instructions, escalate to the user, or mark the task as blocked.
 
@@ -69,6 +70,7 @@ Agents will fall back to their default skills if you do not specify, but explici
 | `@architect` | Non-trivial tasks (APIs, schema, multi-file) | Written implementation plan |
 | `@engineer` | All implementation work | Files changed, tests, reviewer verdicts, screenshots |
 | `@qa` | After engineer reports success, if endpoints or UI changed | JSON verdict (E2E tests, OpenAPI spec verification) |
+| `@developer-advocate` | Every ticket, after QA | List of docs/config files updated or created |
 | `@logger` | After all quality gates pass | Log file path and notification result |
 | `code-reviewer` | Invoked by engineer, not by you directly | JSON verdict |
 | `security-reviewer` | Invoked by engineer, not by you directly | JSON verdict |
@@ -89,8 +91,9 @@ A task is NOT done until all conditions in the Definition of Done (see `AGENTS.m
 2. Engineer reports both reviewers passed (no critical or major issues)
 3. QA agent passed (if endpoints or UI were changed)
 4. Screenshots exist for UI changes
-5. Logger confirms the task log was written and notification was sent
-6. Roadmap is updated
+5. Developer-advocate has updated README, docker-compose, mocks, and docs as needed
+6. Logger confirms the task log was written and notification was sent
+7. Roadmap is updated
 
 
 ## Communication style
