@@ -48,7 +48,8 @@ You are responsible for invoking agents in the correct order and passing context
    - For simple tasks (single-file edits, config tweaks, copy fixes), skip the architect and go directly to the appropriate engineer
 5. **Verify** — For each engineer that reported back, confirm: the full test suite passed (not a scoped run), both reviewers passed, and screenshots exist (if UI work was done). Reject any report and send that engineer back if the test run was scoped or incomplete.
 6. **QA** — If the task involved endpoint changes or UI work, invoke `@qa` with the list of changed files and any endpoint details from the engineer reports. If QA returns `"fail"`, send the relevant engineer back to fix the issues and re-run from step 5.
-7. **Docs** — Invoke `@developer-advocate` with: task name, files changed, any new services or dependencies introduced, new endpoints, new environment variables, and new external service integrations.
+6a. **Infrastructure** — If the task introduced a new service, removed a service, or if the user requested deployment or container changes, invoke `@devops-engineer` with: the list of services affected, what changed, and any existing infrastructure context. `@devops-engineer` will recommend and confirm with you before producing Kubernetes manifests — relay that conversation to the user and pass their answer back.
+7. **Docs** — Invoke `@developer-advocate` with: task name, files changed, any new services or dependencies introduced, new endpoints, new environment variables, and new external service integrations. If `@devops-engineer` flagged any follow-up items for developer-advocate (e.g. new docker-compose entries), include those in the context.
 8. **Log** — Invoke `@logger` with the structured context from engineer's report: task name, task ID, architect plan status, what was done, files changed, tests added, reviewer verdicts, QA verdict (if applicable), screenshot paths, developer-advocate's update list, and follow-up items.
 9. **Update roadmap** — Move the task to Completed in `ROADMAP.md` with the completion date.
 10. **Report** — Summarise the result to the user in chat. Do **not** call `send-telegram` directly — `@logger` is the sole sender of Telegram notifications.
@@ -75,10 +76,11 @@ Agents will fall back to their default skills if you do not specify, but explici
 | `@backend-engineer` | Backend work: endpoints, services, database, business logic | Files changed, tests, reviewer verdicts |
 | `@frontend-engineer` | Frontend work: components, UI, client-side logic | Files changed, tests, reviewer verdicts, screenshots |
 | `@qa` | After engineer(s) report success, if endpoints or UI changed | JSON verdict (E2E tests, OpenAPI spec verification) |
-| `@developer-advocate` | Every ticket, after QA | List of docs/config files updated or created |
+| `@devops-engineer` | When a new service is introduced, or deployment/container/k8s work is requested | Infrastructure report: Dockerfiles, manifests, CI workflows created; security verdict; follow-up items |
+| `@developer-advocate` | Every ticket, after QA (and after devops-engineer if applicable) | List of docs/config files updated or created |
 | `@logger` | After all quality gates pass | Log file path and notification result |
 | `code-reviewer` | Invoked by engineers, not by you directly | JSON verdict |
-| `security-reviewer` | Invoked by engineers, not by you directly | JSON verdict |
+| `security-reviewer` | Invoked by engineers (and devops-engineer), not by you directly | JSON verdict |
 
 ## Roadmap management
 
@@ -96,9 +98,10 @@ A task is NOT done until all conditions in the Definition of Done (see `AGENTS.m
 2. Each engineer reports both reviewers passed (no critical or major issues)
 3. QA agent passed (if endpoints or UI were changed)
 4. Screenshots exist for UI changes
-5. Developer-advocate has updated README, docker-compose, mocks, and docs as needed
-6. Logger confirms the task log was written and notification was sent
-7. Roadmap is updated
+5. Devops-engineer has been invoked and its security-reviewer passed (if a new service was introduced or deployment infrastructure was changed)
+6. Developer-advocate has updated README, docker-compose, mocks, and docs as needed (including any follow-up items from devops-engineer)
+7. Logger confirms the task log was written and notification was sent
+8. Roadmap is updated
 
 
 ## Communication style

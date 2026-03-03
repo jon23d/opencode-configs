@@ -8,9 +8,10 @@ These agents work together. **Build is the orchestrator** — it delegates to ot
 - **architect** (`@architect`) — Subagent invoked by build. Reads the codebase and produces a written plan. Required for tasks touching APIs, schema, or multiple files.
 - **backend-engineer** (Tab to switch) — Implements backend work: endpoints, services, database, business logic. Invokes reviewers directly during the coding loop. Reports back to build when reviewers pass.
 - **frontend-engineer** (Tab to switch) — Implements frontend work: React components, UI interactions, client-side logic. Takes screenshots of all UI changes. Invokes reviewers directly during the coding loop. Reports back to build when reviewers pass.
-- **code-reviewer** / **security-reviewer** — Invoked by backend-engineer or frontend-engineer after every code change. Both must pass before a task is done.
+- **devops-engineer** (Tab to switch) — Produces Dockerfiles, Kubernetes manifests, and CI/CD pipeline configuration. Prioritises provider-agnostic infrastructure with Docker as the portability layer. Invoked by build when new services are introduced or deployment work is requested. Always recommends and confirms before generating Kubernetes manifests. Invokes security-reviewer on all produced infrastructure files.
+- **code-reviewer** / **security-reviewer** — Invoked by backend-engineer, frontend-engineer, or devops-engineer after every change. Both must pass before a task is done.
 - **qa** (`@qa`) — Invoked by build after engineer reports success, when endpoints or UI were changed. Runs Playwright E2E tests and verifies OpenAPI specs match the running API.
-- **developer-advocate** (`@developer-advocate`) — Invoked by build on every ticket after all quality gates pass. Keeps `README.md`, `docker-compose.yml`, external service mocks, and `docs/` up to date so a new engineer can always clone and run the project.
+- **developer-advocate** (`@developer-advocate`) — Invoked by build on every ticket after all quality gates pass. Keeps `README.md`, `docker-compose.yml`, external service mocks, and `docs/` up to date so a new engineer can always clone and run the project. Handles local dev infrastructure; devops-engineer handles production infrastructure.
 - **logger** (`@logger`) — Invoked by build after developer-advocate completes. Writes the task log (using the `project-manager` skill) and sends the Telegram notification.
 
 For simple, self-contained tasks (single-file edits, copy fixes, config tweaks), architect sign-off is optional. When in doubt, ask build.
@@ -47,11 +48,12 @@ A coding task is NEVER complete until all of the following are true:
 4. The `security-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
 5. The `@qa` agent has verified E2E tests pass and OpenAPI specs match running endpoints (if the task involved endpoint changes or UI work)
 6. Screenshots have been taken of all UI changes
-7. The `@developer-advocate` agent has updated `README.md`, `docker-compose.yml`, service mocks, and `docs/` to reflect any changes from this task
-8. The `@logger` agent has written a task log to `agent-logs/YYYY-MM-DD-HH-MM/task-name.md`
-9. The `@logger` agent has sent a Telegram notification (or confirmed it was skipped)
+7. The `@devops-engineer` agent has been invoked and its `security-reviewer` has passed (if the task introduced a new service or changed deployment infrastructure)
+8. The `@developer-advocate` agent has updated `README.md`, `docker-compose.yml`, service mocks, and `docs/` to reflect any changes from this task (including follow-up items from `@devops-engineer`)
+9. The `@logger` agent has written a task log to `agent-logs/YYYY-MM-DD-HH-MM/task-name.md`
+10. The `@logger` agent has sent a Telegram notification (or confirmed it was skipped)
 
-**Responsibility:** Items 1–4 are verified by the implementing engineer (`@backend-engineer`, `@frontend-engineer`, or both). Item 5 is handled by `@qa` (invoked by `build`). Item 6 is verified by `@frontend-engineer`. Item 7 is handled by `@developer-advocate` (invoked by `build`). Items 8–9 are handled by `@logger` (invoked by `build` after developer-advocate completes).
+**Responsibility:** Items 1–4 are verified by the implementing engineer (`@backend-engineer`, `@frontend-engineer`, or both). Item 5 is handled by `@qa` (invoked by `build`). Item 6 is verified by `@frontend-engineer`. Item 7 is handled by `@devops-engineer` (invoked by `build` when a new service is introduced or deployment infrastructure changes). Item 8 is handled by `@developer-advocate` (invoked by `build`). Items 9–10 are handled by `@logger` (invoked by `build` after developer-advocate completes).
 
 If you have written code and have not yet invoked both reviewers, you have not
 finished the task. Do not summarise, do not ask what to do next, do not say the
