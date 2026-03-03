@@ -5,6 +5,28 @@ Add new entries in reverse-chronological order (newest first).
 
 ---
 
+## Telemetry stack: OpenTelemetry
+
+**Date:** 2026-03-03
+**Status:** Resolved
+
+OpenTelemetry is the standard telemetry SDK across all services. Reasons: vendor-neutral
+(exporters are swappable without application code changes), broad auto-instrumentation
+coverage for Node.js, and a single SDK covers traces, metrics, and log correlation.
+
+For Node.js/TypeScript:
+- `@opentelemetry/sdk-node` + `@opentelemetry/auto-instrumentations-node` for setup
+- `@opentelemetry/exporter-otlp-http` for traces/metrics via OTLP
+- `@opentelemetry/exporter-prometheus` for Prometheus metrics scraping
+- `pino` for structured logging, with OTel trace/span IDs injected via `mixin`
+
+Specific collector, backend, and alerting tooling decisions are deferred — the OTLP
+exporter endpoint is read from `OTEL_EXPORTER_OTLP_ENDPOINT` at runtime.
+
+See `skills/observability/SKILL.md` (Node.js/TypeScript section) for implementation patterns.
+
+---
+
 ## [IN PROGRESS] Observability reviewer agent
 
 **Date:** 2026-03-03

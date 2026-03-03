@@ -125,68 +125,180 @@ not required by the deployment environment.
 
 ### Node.js / TypeScript
 
-> **Status: conventions to be confirmed.** No library decisions have been made yet.
-> The patterns below describe what good instrumentation looks like; specific library
-> choices will be added once the team has decided on a telemetry stack.
+**Telemetry stack: OpenTelemetry.** All metrics, traces, and log correlation use the
+OpenTelemetry SDK. This keeps instrumentation vendor-neutral — the exporter can be
+swapped without changing application code.
 
-**Logging**
+#### Required packages
 
-Use a structured logging library (e.g. `pino`, `winston`, `bunyan`). Never use
-`console.log` in production code paths — it produces unstructured output and cannot
-be controlled by log level.
-
-Pattern for a logger with correlation ID context:
-
-```typescript
-// Create a child logger with request-scoped context
-const reqLogger = logger.child({ correlationId: req.headers['x-correlation-id'] ?? generateId() })
-
-// Use the child logger throughout the request lifecycle
-reqLogger.info({ userId: user.id, action: 'login' }, 'User authenticated')
-reqLogger.error({ err, userId: user.id }, 'Login failed')
+```
+@opentelemetry/api                        # stable API used in application code
+@opentelemetry/sdk-node                   # Node.js SDK used in bootstrap only
+@opentelemetry/auto-instrumentations-node # auto-instruments Express, HTTP, pg, redis, etc.
+@opentelemetry/exporter-otlp-http         # pushes traces (and optionally metrics) via OTLP
+@opentelemetry/exporter-prometheus        # exposes /metrics scrape endpoint for Prometheus
+pino                                      # structured JSON logger
 ```
 
-**Metrics**
+#### Bootstrap
 
-Whether using `prom-client`, OpenTelemetry SDK, or another library, the pattern is
-the same: define instruments at module load time, record values at the point of
-observation.
+The SDK **must** be initialised before any other imports. Place setup in a dedicated
+`src/tracing.ts` and load it via `--import ./src/tracing.js` (ESM) or
+`--require ./src/tracing.js` (CJS) in the process start command. Never `import` it
+from application code.
 
 ```typescript
-// Define once at module scope
-const httpRequestDuration = // histogram instrument for request duration
+// src/tracing.ts
+import { NodeSDK } from '@opentelemetry/sdk-node'
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-otlp-http'
+import { PrometheusExporter } from '@opentelemetry/exporter-prometheus'
+import { Resource } from '@opentelemetry/resources'
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions'
 
-// Record at observation point
-httpRequestDuration.record(durationMs, { method: req.method, status: String(res.statusCode) })
+// Only export traces if a collector endpoint is configured.
+// Without this guard, the OTLP exporter will emit noisy connection errors in
+// local dev environments that don't have a collector running.
+const traceExporter = process.env.OTEL_EXPORTER_OTLP_ENDPOINT
+  ? new OTLPTraceExporter()
+  : undefined
+
+const sdk = new NodeSDK({
+  resource: new Resource({
+    [ATTR_SERVICE_NAME]: process.env.SERVICE_NAME ?? 'unknown-service',
+    [ATTR_SERVICE_VERSION]: process.env.SERVICE_VERSION ?? 'dev',
+  }),
+  traceExporter,
+  metricReader: new PrometheusExporter({ port: 9464 }),
+  instrumentations: [getNodeAutoInstrumentations()],
+})
+
+sdk.start()
+process.on('SIGTERM', () => sdk.shutdown().finally(() => process.exit(0)))
 ```
 
-**Tracing**
+Developers who want local traces can add a Jaeger (or compatible) container to
+`docker-compose.yml` and set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`
+in their `.env`. Without it, the SDK still runs — auto-instrumentation, context
+propagation, and log correlation all work; traces are simply not exported.
 
-OpenTelemetry is the recommended approach for vendor-neutral tracing. Auto-instrumentation
-covers most Node.js HTTP and DB libraries. Add manual spans at meaningful business
-operation boundaries.
+#### Logging — pino with trace correlation
+
+Use `pino` for structured JSON logging. Inject the active OTel trace and span IDs
+via a `mixin` so every log line is automatically correlated to its trace.
 
 ```typescript
-const span = tracer.startSpan('processOrder', { attributes: { 'order.id': orderId } })
-try {
-  // ... operation ...
-  span.setStatus({ code: SpanStatusCode.OK })
-} catch (err) {
-  span.recordException(err)
-  span.setStatus({ code: SpanStatusCode.ERROR })
-  throw err
-} finally {
-  span.end()
+// src/logger.ts
+import pino from 'pino'
+import { trace } from '@opentelemetry/api'
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL ?? 'info',
+  mixin() {
+    const span = trace.getActiveSpan()
+    if (!span?.isRecording()) return {}
+    const { traceId, spanId } = span.spanContext()
+    return { traceId, spanId }
+  },
+})
+```
+
+Create a child logger at the request boundary to attach request-scoped fields:
+
+```typescript
+// Express middleware
+app.use((req, res, next) => {
+  req.log = logger.child({
+    requestId: req.headers['x-request-id'] ?? crypto.randomUUID(),
+    method: req.method,
+    path: req.path,
+  })
+  next()
+})
+
+// Usage in handlers
+req.log.info({ userId: user.id }, 'User authenticated')
+req.log.error({ err, userId: user.id }, 'Login failed')
+```
+
+Never use `console.log` in production paths — it produces unstructured output and
+cannot be controlled by log level.
+
+#### Metrics
+
+Define instruments at module scope. Use OTel semantic convention naming
+(`http.server.request.duration`); the Prometheus exporter converts dots to underscores
+automatically.
+
+```typescript
+// src/metrics.ts
+import { metrics } from '@opentelemetry/api'
+
+const meter = metrics.getMeter('my-service')
+
+export const httpRequestDuration = meter.createHistogram('http.server.request.duration', {
+  description: 'HTTP server request duration',
+  unit: 'ms',
+})
+
+export const httpRequestTotal = meter.createCounter('http.server.request.total', {
+  description: 'Total HTTP server requests',
+})
+```
+
+Record at the point of observation, with bounded label values only:
+
+```typescript
+httpRequestDuration.record(Date.now() - startTime, {
+  'http.request.method': req.method,
+  'http.response.status_code': String(res.statusCode),
+  'http.route': req.route?.path ?? 'unknown',
+})
+```
+
+#### Tracing — manual spans
+
+Auto-instrumentation covers HTTP, Express, pg, redis, and most common libraries.
+Add manual spans at meaningful **business operation boundaries** that auto-instrumentation
+does not cover.
+
+Use `startActiveSpan` (not `startSpan`) — it sets the new span as active in async
+context, so any auto-instrumented child calls are automatically nested under it.
+
+```typescript
+import { trace, SpanStatusCode } from '@opentelemetry/api'
+
+const tracer = trace.getTracer('my-service')
+
+async function processOrder(orderId: string) {
+  return tracer.startActiveSpan('order.process', async (span) => {
+    span.setAttribute('order.id', orderId)
+    try {
+      const result = await doWork(orderId)
+      span.setStatus({ code: SpanStatusCode.OK })
+      return result
+    } catch (err) {
+      span.recordException(err as Error)
+      span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message })
+      throw err
+    } finally {
+      span.end()   // always end the span, even on error
+    }
+  })
 }
 ```
 
-**Health endpoints**
+Context propagation across async boundaries uses `AsyncLocalStorage` and is handled
+automatically by the SDK. No manual context threading is required in standard
+async/await code.
+
+#### Health endpoints
 
 ```typescript
 app.get('/health', async (req, res) => {
   const checks = await Promise.allSettled([
-    db.raw('SELECT 1'),          // database connectivity
-    cache.ping(),                // cache reachability
+    db.raw('SELECT 1'),   // database connectivity
+    cache.ping(),         // cache reachability
   ])
   const healthy = checks.every(c => c.status === 'fulfilled')
   res.status(healthy ? 200 : 503).json({
@@ -194,7 +306,7 @@ app.get('/health', async (req, res) => {
     checks: {
       database: checks[0].status,
       cache: checks[1].status,
-    }
+    },
   })
 })
 ```

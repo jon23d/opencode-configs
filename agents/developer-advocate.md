@@ -36,9 +36,12 @@ The entry point for every new engineer. Must always contain:
 
 - **Quickstart** — from `git clone` to a running application in as few steps as possible. Every command must be copy-pasteable and work on a clean machine without modification.
 - **Prerequisites** — exact versions of required tools (Node, Docker, pnpm, etc.)
-- **Environment setup** — which `.env` variables are required, where to get their values, and a reference to `.env.example`
+- **Environment setup** — which `.env` variables are required, where to get their values, and a reference to `.env.example`. Observability variables must be documented here:
+  - `LOG_LEVEL` — valid values (`debug`, `info`, `warn`, `error`) and the default
+  - `OTEL_EXPORTER_OTLP_ENDPOINT` — mark as optional; explain that traces are not exported when unset, and point to the Jaeger setup below for developers who want local traces
 - **Running the application** — the exact commands to start the full stack
 - **Running tests** — one command (`pnpm test` from the root)
+- **Local observability (optional)** — if Jaeger is present in `docker-compose.yml`, document how to enable it: set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` and open the Jaeger UI at `http://localhost:16686`. Keep this section clearly marked as optional so it does not add friction for developers who do not need it.
 - **Troubleshooting** — a short section for known setup issues
 
 If the task changed any setup step, dependency version, required environment variable, or startup command, update this file.
@@ -54,6 +57,23 @@ All infrastructure the application depends on (databases, caches, queues, etc.) 
 - Use `depends_on` with `condition: service_healthy` for services that need a readiness check before the application starts
 
 If the task introduced a new backing service, add it here.
+
+If the task introduced a new service with OpenTelemetry instrumentation and no Jaeger
+container is already present, add one as an **optional** profile so it does not start
+by default:
+
+```yaml
+jaeger:
+  profiles: [observability]
+  image: jaegertracing/all-in-one:1.57
+  ports:
+    - "4318:4318"   # OTLP HTTP receiver
+    - "16686:16686" # Jaeger UI
+```
+
+Developers opt in by running `docker compose --profile observability up`. Do not add
+Jaeger to the default startup — it is a development convenience, not a required
+dependency.
 
 ### 3. Mock configurations for external services
 
