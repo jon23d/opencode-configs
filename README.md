@@ -40,6 +40,7 @@ and TELEGRAM_CHAT_ID. See TELEGRAM_SETUP.md for setup instructions.
 │   ├── architect.md                            # Technical architect subagent
 │   ├── engineer.md                             # Software engineer (primary, Tab to switch)
 │   ├── logger.md                               # Task logging and notifications subagent
+│   ├── qa.md                                   # E2E testing and OpenAPI spec verification subagent
 │   ├── code-reviewer.md                        # Code review subagent
 │   └── security-reviewer.md                    # Security review subagent
 ├── skills/
@@ -49,7 +50,10 @@ and TELEGRAM_CHAT_ID. See TELEGRAM_SETUP.md for setup instructions.
 │   ├── api-design/SKILL.md                     # REST API design principles
 │   ├── javascript-application-design/SKILL.md  # JS/TS project conventions
 │   ├── database-schema-design/SKILL.md         # PostgreSQL/Prisma schema conventions
-│   └── project-manager/SKILL.md                # Roadmap and task logging conventions
+│   ├── project-manager/SKILL.md                # Roadmap and task logging conventions
+│   ├── e2e-testing/SKILL.md                    # Playwright E2E testing conventions
+│   ├── openapi-spec-verification/SKILL.md      # OpenAPI spec-vs-reality comparison
+│   └── swagger-ui-verification/SKILL.md        # Swagger UI and raw spec access checks
 └── tools/
     └── send-telegram.ts                        # Telegram notification tool
 ```
@@ -58,7 +62,7 @@ and TELEGRAM_CHAT_ID. See TELEGRAM_SETUP.md for setup instructions.
 
 ### Orchestration Model
 
-**Build is the orchestrator.** All agents report back to build, and build decides what happens next. Each agent has an "agent contract" at the top of its definition specifying who invokes it, what it expects, what it returns, and who it reports to.
+**Build is the orchestrator.** All agents report back to build, and build decides what happens next. Each agent has an "agent contract" at the top of its definition specifying who invokes it, what it expects, what it returns, who it reports to, and what skills it loads by default. Build can override skill loading when delegating tasks.
 
 ### Agents
 
@@ -68,21 +72,25 @@ and TELEGRAM_CHAT_ID. See TELEGRAM_SETUP.md for setup instructions.
 
 3. **Engineer** (`agents/engineer.md`) — Implements against plans using TDD. Invokes code-reviewer and security-reviewer during the coding loop. Reports results back to build.
 
-4. **Logger** (`agents/logger.md`) — Invoked by build after all quality gates pass. Loads the `project-manager` skill, writes the task log, and sends the Telegram notification.
+4. **QA** (`agents/qa.md`) — Invoked by build after engineer reports success, when endpoints or UI were changed. Runs Playwright E2E tests and verifies OpenAPI specs match the running API. Returns a structured JSON verdict.
 
-5. **Code Reviewer** (`agents/code-reviewer.md`) — Invoked by engineer after code changes. Returns a structured JSON verdict.
+5. **Logger** (`agents/logger.md`) — Invoked by build after all quality gates pass. Loads the `project-manager` skill, writes the task log, and sends the Telegram notification.
 
-6. **Security Reviewer** (`agents/security-reviewer.md`) — Invoked by engineer after code-reviewer passes. Returns a structured JSON security verdict.
+6. **Code Reviewer** (`agents/code-reviewer.md`) — Invoked by engineer after code changes. Returns a structured JSON verdict.
+
+7. **Security Reviewer** (`agents/security-reviewer.md`) — Invoked by engineer after code-reviewer passes. Returns a structured JSON security verdict.
 
 ### Skills
 
-Skills are loaded at the start of a task to shape the agent's approach:
+Skills are loaded on-demand to shape an agent's approach. Each agent's contract lists its default skills, and build can override or extend them when delegating a task.
 
-**Mandatory (always loaded by engineer):** `tdd`, `testing-best-practices`
+**Engineer defaults:** `tdd`, `testing-best-practices`. Optional: `ui-design`, `api-design`, `database-schema-design`, `javascript-application-design`
 
-**Optional (loaded based on task type):** `ui-design`, `api-design`, `database-schema-design`, `javascript-application-design`
+**Architect:** `api-design`, `database-schema-design` (based on task type)
 
-**Used by logger:** `project-manager`
+**QA defaults:** `e2e-testing`. When endpoints changed: `openapi-spec-verification`, `swagger-ui-verification`
+
+**Logger:** `project-manager`
 
 ### Standard Workflow
 
@@ -98,6 +106,8 @@ Build (review plan)
 Engineer (implement with TDD → invoke reviewers)
     ↓
 Build (verify quality gates)
+    ↓
+QA (E2E tests + OpenAPI verification — if endpoints/UI changed)
     ↓
 Logger (write task log, send notification)
     ↓

@@ -17,10 +17,11 @@ permission:
 
 ## Agent contract
 
-- **Invoked by:** `build` (after engineer work is complete and all reviewers have passed)
-- **Input:** A structured message containing: task name, task ID, whether an architect plan was used, what was done (prose), files changed, tests added, reviewer verdicts and notes, screenshot paths (if any), and follow-up items
+- **Invoked by:** `build` (after engineer work is complete and all quality gates have passed)
+- **Input:** A structured message containing: task name, task ID, whether an architect plan was used, what was done (prose), files changed, tests added, reviewer verdicts and notes, QA verdict (if applicable), screenshot paths (if any), and follow-up items
 - **Output:** Confirmation that the task log was written and the Telegram notification was sent (or skipped)
 - **Reports to:** `build`
+- **Default skills:** `project-manager` (always loaded — defines log format).
 
 ## Your role
 

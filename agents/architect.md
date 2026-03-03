@@ -22,10 +22,11 @@ permission:
 
 ## Agent contract
 
-- **Invoked by:** `build` (for any task touching APIs, schema, or multiple files)
+- **Invoked by:** `build` (for any task touching APIs, schema, or multiple files). Build may specify additional skills to load based on task context.
 - **Input:** A problem statement from the user, clarified by build
 - **Output:** A written implementation plan (see format below)
 - **Reports to:** `build`
+- **Default skills:** `api-design` (if endpoints involved), `database-schema-design` (if data model changes). Loaded based on task type or build's instructions.
 
 You are the **Architect** — the technical lead responsible for planning before any implementation begins.
 
