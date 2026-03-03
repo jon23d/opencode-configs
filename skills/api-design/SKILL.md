@@ -174,3 +174,5 @@ GET /products?q=wireless+headphones
 ## Documentation
 
 Every endpoint must be documented with its request shape, response shape, all possible status codes, and at least one example. Use OpenAPI (Swagger). The spec is the source of truth — generate docs from it, not the other way around.
+
+The OpenAPI spec is also consumed by the frontend to generate TypeScript types via `openapi-typescript`. This means the spec must be accurate and up to date at all times — a stale or incorrect spec breaks the frontend's type safety. Treat any drift between the spec and the implementation as a critical defect.

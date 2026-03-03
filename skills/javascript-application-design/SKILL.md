@@ -262,6 +262,44 @@ src/
   main.tsx        # Entry point
 ```
 
+**API type generation**
+
+The frontend must never hand-write types for API requests or responses. Types are generated from the backend's OpenAPI spec using `openapi-typescript` and consumed via `openapi-fetch`.
+
+Install:
+```
+pnpm add openapi-fetch
+pnpm add -D openapi-typescript
+```
+
+Add a generation script to `package.json`:
+```json
+"generate:api": "openapi-typescript ../../openapi.yaml -o src/lib/api/schema.d.ts"
+```
+
+Adjust the path to wherever the OpenAPI spec lives in the monorepo. Use `openapi-fetch` with the generated schema for all API calls:
+
+```ts
+// src/lib/api/client.ts
+import createClient from 'openapi-fetch'
+import type { paths } from './schema.d.ts'
+
+export const apiClient = createClient<paths>({ baseUrl: import.meta.env.VITE_API_BASE_URL })
+```
+
+```ts
+// Usage — fully type-safe request and response
+const { data, error } = await apiClient.GET('/users/{id}', {
+  params: { path: { id: userId } },
+})
+```
+
+Rules:
+- Run `pnpm generate:api` whenever the OpenAPI spec changes. Never edit `schema.d.ts` by hand — it is a generated file.
+- Add `src/lib/api/schema.d.ts` to `.prettierignore` and `.eslintignore`.
+- All API calls in the frontend go through the typed client. No raw `fetch` calls to backend endpoints.
+- If `VITE_API_BASE_URL` is not set, the client should default to the local dev server URL.
+
 ---
 
 ### Next.js / SSR

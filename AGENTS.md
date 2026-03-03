@@ -6,8 +6,9 @@ These agents work together. **Build is the orchestrator** — it delegates to ot
 
 - **build** (default) — Product owner and orchestrator. Scopes work, delegates, verifies quality gates, manages the roadmap. Invokes all other agents in the correct order.
 - **architect** (`@architect`) — Subagent invoked by build. Reads the codebase and produces a written plan. Required for tasks touching APIs, schema, or multiple files.
-- **engineer** (Tab to switch) — Implements against the architect's plan. Invokes reviewers directly during the coding loop. Reports back to build when reviewers pass.
-- **code-reviewer** / **security-reviewer** — Invoked by engineer after every code change. Both must pass before a task is done.
+- **backend-engineer** (Tab to switch) — Implements backend work: endpoints, services, database, business logic. Invokes reviewers directly during the coding loop. Reports back to build when reviewers pass.
+- **frontend-engineer** (Tab to switch) — Implements frontend work: React components, UI interactions, client-side logic. Takes screenshots of all UI changes. Invokes reviewers directly during the coding loop. Reports back to build when reviewers pass.
+- **code-reviewer** / **security-reviewer** — Invoked by backend-engineer or frontend-engineer after every code change. Both must pass before a task is done.
 - **qa** (`@qa`) — Invoked by build after engineer reports success, when endpoints or UI were changed. Runs Playwright E2E tests and verifies OpenAPI specs match the running API.
 - **developer-advocate** (`@developer-advocate`) — Invoked by build on every ticket after all quality gates pass. Keeps `README.md`, `docker-compose.yml`, external service mocks, and `docs/` up to date so a new engineer can always clone and run the project.
 - **logger** (`@logger`) — Invoked by build after developer-advocate completes. Writes the task log (using the `project-manager` skill) and sends the Telegram notification.
@@ -23,10 +24,10 @@ These rules are non-negotiable and apply to every coding task without exception.
 CRITICAL: Before writing any implementation code, write a failing test first.
 Load the `tdd` skill at the start of every coding task and follow it exactly.
 
-CRITICAL: After completing any code changes, invoke the `code-reviewer` and
-`security-reviewer` subagents with the contents of every modified file. Do not
-consider a task complete until both reviewers have returned a `"pass"` or
-`"pass_with_issues"` verdict with no `critical` or `major` issues.
+CRITICAL: After completing any code changes, the implementing engineer must invoke
+the `code-reviewer` and `security-reviewer` subagents with the contents of every
+modified file. Do not consider a task complete until both reviewers have returned
+a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues.
 
 ## Running tests
 
@@ -50,10 +51,10 @@ A coding task is NEVER complete until all of the following are true:
 8. The `@logger` agent has written a task log to `agent-logs/YYYY-MM-DD-HH-MM/task-name.md`
 9. The `@logger` agent has sent a Telegram notification (or confirmed it was skipped)
 
-**Responsibility:** Items 1–4 are verified by `engineer` (who invokes the reviewers). Item 5 is handled by `@qa` (invoked by `build`). Item 6 is verified by `engineer`. Item 7 is handled by `@developer-advocate` (invoked by `build`). Items 8–9 are handled by `@logger` (invoked by `build` after developer-advocate completes).
+**Responsibility:** Items 1–4 are verified by the implementing engineer (`@backend-engineer`, `@frontend-engineer`, or both). Item 5 is handled by `@qa` (invoked by `build`). Item 6 is verified by `@frontend-engineer`. Item 7 is handled by `@developer-advocate` (invoked by `build`). Items 8–9 are handled by `@logger` (invoked by `build` after developer-advocate completes).
 
 If you have written code and have not yet invoked both reviewers, you have not
-finished the task. Do not summarize, do not ask what to do next, do not say the
+finished the task. Do not summarise, do not ask what to do next, do not say the
 task is done. Invoke the reviewers first.
 
 ## TDD gate
