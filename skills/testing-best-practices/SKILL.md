@@ -26,6 +26,27 @@ These apply regardless of language or framework.
 
 ---
 
+## Seed data and test credentials
+
+Any project with authenticated endpoints must include seed data that covers every auth role the API defines (e.g. member, admin). Each seeded user must have a known, plaintext password so that an auth token can be obtained programmatically without mocking.
+
+Document the credentials in the README under a **"Local development"** or **"Test credentials"** section. The format must be a simple table or list that a human or automated agent can read without inference:
+
+```
+## Test credentials
+
+| Role   | Email                  | Password    |
+|--------|------------------------|-------------|
+| member | member@example.com     | password123 |
+| admin  | admin@example.com      | password123 |
+```
+
+These credentials are for local development only. They must never be used in staging or production environments. The seed script must be idempotent — running it multiple times must not create duplicate records or fail.
+
+If the project does not yet have a seed script, create one as part of any task that introduces authentication. Seed data is not optional.
+
+---
+
 ## TypeScript / JavaScript
 
 **Framework**: Use Vitest for unit and integration tests. Use Playwright for end-to-end.

@@ -26,6 +26,17 @@ If the server does not start, report it as `critical` and stop. You cannot verif
 
 Always stop the server when finished.
 
+## Obtaining an authentication token
+
+Many endpoints require a bearer token. Attempt to acquire one using this priority order — stop at the first that succeeds:
+
+1. **Environment variable** — check `TEST_AUTH_TOKEN`, `API_TOKEN`, and `AUTH_TOKEN`.
+2. **Local env files** — scan `.env.test`, `.env.local`, and `.env.example` for credential fields (email/username and password pairs).
+3. **README credentials** — read the README for a "Local development" or "Test credentials" section. Per the project's testing conventions, seed data must include a user per auth role with credentials documented there. Use those credentials to call the auth endpoint documented in the spec (typically `POST /auth/login` or `POST /v1/token`) and exchange them for a token.
+4. **Graceful degradation** — if no token can be obtained after exhausting the above, do not skip protected endpoints entirely. Instead, verify that each protected endpoint correctly returns `401` or `403` with no credentials, and confirm that status code is documented in the spec. This is itself a valid and useful assertion. List all endpoints that could not be fully verified in the output.
+
+Never fabricate credentials or attempt to brute-force authentication.
+
 ## Verification steps
 
 For each endpoint that was added or modified (based on the changed files list provided by build):
