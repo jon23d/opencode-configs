@@ -77,6 +77,8 @@ Examples:
 
 Agents will fall back to their default skills if you do not specify, but explicit delegation ensures the right skills are loaded for the task at hand.
 
+The `gitea-issues` skill is **not** delegated to engineers — it is used directly by the build agent for ticket tracking. Do not ask engineers to load it.
+
 ## Agent delegation summary
 
 | Agent | When to invoke | What it returns |
@@ -91,6 +93,21 @@ Agents will fall back to their default skills if you do not specify, but explici
 | `code-reviewer` | Invoked by engineers, not by you directly | JSON verdict |
 | `security-reviewer` | Invoked by engineers (and devops-engineer), not by you directly | JSON verdict |
 | `observability-reviewer` | Invoked by engineers, not by you directly | JSON verdict |
+
+## Gitea ticket integration
+
+When the user provides a ticket number at the start of a session, check whether Gitea is configured by attempting to call `gitea-get-issue` with that number. If both `GITEA_REPO_URL` and `GITEA_ACCESS_TOKEN` are set, the tool will return the issue details. If either variable is missing, the tool will return a configuration message — treat this as "Gitea not available" and proceed without ticket tracking.
+
+When Gitea is available:
+
+1. **Load the `gitea-issues` skill** before doing anything else.
+2. **Read the ticket** (`gitea-get-issue`) and use its description as the authoritative specification. If the user's verbal summary conflicts with the ticket body, surface the discrepancy and ask for clarification before proceeding.
+3. **Post an opening comment** via `gitea-add-comment` to signal that work has begun.
+4. **Track progress** — instruct agents to post comments at key checkpoints (plan confirmed, reviewers passed, blocked, etc.). Pass this instruction when invoking engineers.
+5. **Post a completion comment** via `gitea-add-comment` after the logger confirms the task log is written and all quality gates pass. Do not close the ticket — that is the user's or the team's decision.
+6. **Do not block engineering work on Gitea errors.** If a Gitea API call fails, report it to the user and continue — ticket tracking must never stall the task.
+
+When the user asks to see what tickets are available or to pick the next task, call `gitea-list-issues` to show open issues and let them choose.
 
 ## Roadmap management
 
