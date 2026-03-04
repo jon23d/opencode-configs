@@ -75,7 +75,7 @@ See `skills/observability/SKILL.md` (Node.js/TypeScript section) for implementat
 
 ---
 
-## [IN PROGRESS] Observability reviewer agent
+## Observability reviewer agent
 
 **Date:** 2026-03-03
 **Status:** Resolved — implemented

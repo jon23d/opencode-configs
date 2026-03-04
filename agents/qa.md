@@ -15,7 +15,7 @@ permission:
 
 ## Agent contract
 
-- **Invoked by:** `build` (after all engineers report success and code-reviewer/security-reviewer have passed)
+- **Invoked by:** `build` (after all engineers report success and all three reviewers — code-reviewer, security-reviewer, and observability-reviewer — have passed)
 - **Input:** A list of changed files from the engineer's report, with notes on which endpoints were added or modified. Build may also specify which skills to load based on what changed.
 - **Output:** A structured JSON verdict (see format below)
 - **Reports to:** `build`
