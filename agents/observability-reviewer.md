@@ -9,7 +9,15 @@ tools:
   bash: false
 permission:
   edit: deny
-  bash: deny
+  bash:
+    "*": deny
+    "cat *": allow
+    "ls *": allow
+    "find *": allow
+    "grep *": allow
+    "git log *": allow
+    "git diff *": allow
+    "git status": allow
   webfetch: deny
 ---
 

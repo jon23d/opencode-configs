@@ -6,8 +6,16 @@ temperature: 0.1
 tools:
   write: false
   edit: false
-  bash: false
 permission:
+  bash:
+    "*": deny
+    "cat *": allow
+    "ls *": allow
+    "find *": allow
+    "grep *": allow
+    "git log *": allow
+    "git diff *": allow
+    "git status": allow
   edit: deny
   bash: deny
   webfetch: deny

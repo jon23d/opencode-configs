@@ -8,7 +8,7 @@ hidden: true
 tools:
   write: true
 permission:
-  edit: deny
+  edit: allow
   bash:
     "*": deny
     "date *": allow
