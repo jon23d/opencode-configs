@@ -7,6 +7,9 @@ tools:
   write: false
   edit: false
 permission:
+  read: allow
+  edit: deny
+  webfetch: deny
   bash:
     "*": deny
     "cat *": allow
@@ -16,9 +19,6 @@ permission:
     "git log *": allow
     "git diff *": allow
     "git status": allow
-  edit: deny
-  bash: deny
-  webfetch: deny
 ---
 
 ## Agent contract

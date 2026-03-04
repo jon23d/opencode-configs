@@ -4,7 +4,7 @@
 
 These agents work together. **Build is the orchestrator** — it delegates to other agents and they report back.
 
-- **build** (default) — Product owner and orchestrator. Scopes work, delegates, verifies quality gates, manages the roadmap. Invokes all other agents in the correct order.
+- **build** (default) — Product owner and orchestrator. Scopes work, delegates, and verifies quality gates. Tracks work via Gitea issues. Invokes all other agents in the correct order.
 - **architect** (`@architect`) — Subagent invoked by build. Reads the codebase and produces a written plan. Required for tasks touching APIs, schema, or multiple files.
 - **backend-engineer** (Tab to switch) — Implements backend work: endpoints, services, database, business logic. Invokes reviewers directly during the coding loop. Reports back to build when reviewers pass.
 - **frontend-engineer** (Tab to switch) — Implements frontend work: React components, UI interactions, client-side logic. Takes screenshots of all UI changes. Invokes reviewers directly during the coding loop. Reports back to build when reviewers pass.

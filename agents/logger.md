@@ -8,6 +8,7 @@ hidden: true
 tools:
   write: true
 permission:
+  read: allow
   edit: allow
   bash:
     "*": deny

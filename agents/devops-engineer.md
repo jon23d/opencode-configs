@@ -5,6 +5,7 @@ model: github-copilot/claude-sonnet-4.6
 temperature: 0.2
 color: "#10b981"
 permission:
+  read: allow
   edit: allow
   bash:
     "*": deny

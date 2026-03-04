@@ -9,8 +9,10 @@ tools:
   bash: true
   task: true
 permission:
+  read: allow
+  edit: allow
   task:
-    "*": "allow"
+    "*": allow
 ---
 
 ## Agent contract
