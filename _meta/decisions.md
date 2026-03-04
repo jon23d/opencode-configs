@@ -5,6 +5,54 @@ Add new entries in reverse-chronological order (newest first).
 
 ---
 
+## In-app help UX standards added to ui-design skill
+
+**Date:** 2026-03-03
+**Status:** Resolved
+
+### Context
+
+User-facing applications produced by the frontend-engineer were not consistently
+including contextual help. Icon buttons lacked tooltips, non-obvious fields lacked
+descriptions, complex pages had no embedded explanation of what the page does, and
+empty states were generic ("Nothing here yet") rather than informative.
+
+Help content was either absent or expected to live in a separate documentation site.
+Neither is acceptable for a production application.
+
+### Decision
+
+A new **"In-app help and embedded documentation"** section was added to
+`skills/ui-design/SKILL.md`. It is a required part of any frontend task. It covers:
+
+- **Tooltips** — mandatory on all icon-only buttons; should be applied liberally
+  on any control that needs a brief one-sentence explanation
+- **Help icons and popovers** — for non-obvious form fields and settings that need
+  2–4 sentences of explanation; placed immediately after the field label
+- **Field-level help text** — always-visible description text beneath any form field
+  with format requirements or downstream effects; distinct from validation errors
+- **Asides and contextual help panels** — persistent collapsible sidebar on complex
+  settings and configuration screens; content updates with the active section
+- **Empty states as onboarding** — every empty state must name the entity, explain
+  what it is and why the user would want one, and offer a primary creation action;
+  generic copy is prohibited
+- **Embedded help sections** — collapsible "How this works" accordions on complex
+  feature pages; replaces the need to consult external docs for the common case
+
+A **help UX checklist** was added at the end of the section. The frontend-engineer
+must verify all items before marking a task done. This checklist is now part of the
+definition of done for UI work.
+
+### Rationale
+
+Help is a design element, not a documentation task. Contextual help at the point of
+need reduces support load, increases feature adoption, and makes the application
+self-explanatory. The patterns chosen (tooltips, popovers, asides, empty states,
+accordions) are all available in both Mantine and Tailwind/Radix with no additional
+dependencies.
+
+---
+
 ## Telemetry stack: OpenTelemetry
 
 **Date:** 2026-03-03

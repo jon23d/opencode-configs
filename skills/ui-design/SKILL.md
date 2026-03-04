@@ -220,6 +220,278 @@ Images use correct dimensions, modern formats (WebP, AVIF), and lazy loading (`l
 
 ---
 
+## In-app help and embedded documentation
+
+Every user-facing application must include help as a first-class design concern, not an afterthought. Users should be able to understand how to use any feature without leaving the application. Help is always contextual — it appears at the point of need, not behind a separate "Help" page.
+
+The guiding principle: **if a reviewer needs to explain a UI element to someone new, that explanation should already be in the UI.**
+
+---
+
+### Tooltips
+
+Use tooltips for brief, single-sentence explanations of controls, icons, or abbreviated labels. Tooltips are the lowest-friction help mechanism and should be applied liberally.
+
+**When to use:**
+- Icon-only buttons — the tooltip is the label
+- Truncated text that needs its full value visible
+- Form field labels where the purpose is obvious but the constraint is not (e.g., "Must match your registered email")
+- Any interactive element that would require a second glance to understand
+
+**Rules:**
+- Tooltip content is one sentence maximum. If you need more, use a popover.
+- Never put critical information only in a tooltip — tooltips are invisible on touch devices. Pair with visible help text for required knowledge.
+- Tooltips trigger on hover and on keyboard focus. Never suppress the focus trigger.
+- Delay tooltip appearance by 300–500ms to avoid flicker during cursor movement.
+
+**Mantine implementation:**
+```tsx
+import { Tooltip, ActionIcon } from '@mantine/core'
+import { IconTrash } from '@tabler/icons-react'
+
+// Icon button — tooltip is the accessible label
+<Tooltip label="Delete record" withArrow position="top">
+  <ActionIcon variant="subtle" color="red" aria-label="Delete record">
+    <IconTrash size={16} />
+  </ActionIcon>
+</Tooltip>
+
+// Field label with constraint hint
+<Tooltip label="Must be unique across all projects" withArrow>
+  <TextInput label="Project slug" {...form.getInputProps('slug')} />
+</Tooltip>
+```
+
+**Tailwind + Radix implementation:**
+```tsx
+import * as Tooltip from '@radix-ui/react-tooltip'
+
+<Tooltip.Provider delayDuration={400}>
+  <Tooltip.Root>
+    <Tooltip.Trigger asChild>
+      <button aria-label="Delete record" className="...">
+        <TrashIcon className="w-4 h-4" />
+      </button>
+    </Tooltip.Trigger>
+    <Tooltip.Portal>
+      <Tooltip.Content className="bg-gray-900 text-white text-sm px-2 py-1 rounded shadow-md">
+        Delete record
+        <Tooltip.Arrow className="fill-gray-900" />
+      </Tooltip.Content>
+    </Tooltip.Portal>
+  </Tooltip.Root>
+</Tooltip.Provider>
+```
+
+---
+
+### Help icons and popovers
+
+Use a help icon (`?` in a circle) followed by a popover for inline contextual explanations that require more than one sentence. The popover stays open until dismissed, giving the user time to read.
+
+**When to use:**
+- Form fields with non-obvious requirements or business rules
+- Settings whose effects are not self-evident
+- Any feature that previously generated support questions
+- Fields that interact with each other in non-obvious ways
+
+**Rules:**
+- Place the help icon immediately after the field label, not at the end of the row.
+- Popover content should be 2–4 sentences. If it needs more, link to an embedded help section.
+- Include a concrete example where it helps: "e.g. `billing-2024-q1`".
+- Popovers must be keyboard-accessible: trigger opens on Enter/Space, closes on Escape.
+
+**Mantine implementation:**
+```tsx
+import { Popover, Text, ActionIcon, Group } from '@mantine/core'
+import { IconHelpCircle } from '@tabler/icons-react'
+
+function FieldWithHelp({ label, helpText, children }) {
+  return (
+    <Stack gap={4}>
+      <Group gap={4} align="center">
+        <Text component="label" size="sm" fw={500}>{label}</Text>
+        <Popover width={260} position="top-start" withArrow shadow="md">
+          <Popover.Target>
+            <ActionIcon
+              variant="transparent"
+              size="xs"
+              aria-label={`Help for ${label}`}
+              color="gray"
+            >
+              <IconHelpCircle size={14} />
+            </ActionIcon>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <Text size="sm">{helpText}</Text>
+          </Popover.Dropdown>
+        </Popover>
+      </Group>
+      {children}
+    </Stack>
+  )
+}
+```
+
+---
+
+### Field-level help text
+
+Every form field that has a non-obvious purpose or constraint should have always-visible help text rendered beneath it. Unlike tooltips, this text is visible without interaction and accessible on touch devices.
+
+**When to use:**
+- Fields with format requirements (dates, phone numbers, slugs)
+- Fields whose value affects downstream behaviour
+- Any field that has caused user errors in the past
+
+**Rules:**
+- Help text is distinct from validation error text — it is always present; error text appears only on validation failure.
+- Help text is concise: one sentence or a short phrase.
+- Use a softer colour than the label to establish hierarchy. In Mantine: `c="dimmed"`. In Tailwind: `text-gray-500`.
+
+**Mantine implementation:**
+```tsx
+<TextInput
+  label="Billing email"
+  description="Invoices will be sent here. Can differ from your login email."
+  placeholder="billing@company.com"
+  {...form.getInputProps('billingEmail')}
+/>
+```
+
+**Tailwind implementation:**
+```tsx
+<div className="flex flex-col gap-1">
+  <label htmlFor="billing-email" className="text-sm font-medium text-gray-700">
+    Billing email
+  </label>
+  <input id="billing-email" type="email" className="..." />
+  <p className="text-sm text-gray-500">
+    Invoices will be sent here. Can differ from your login email.
+  </p>
+</div>
+```
+
+---
+
+### Asides and contextual help panels
+
+For complex features — multi-step workflows, configuration screens, dashboards with multiple interacting controls — provide a persistent aside (sidebar panel) that gives contextual documentation for the current section.
+
+**When to use:**
+- Settings pages with significant business impact
+- Any screen where a user must understand context before acting
+- Features that have a learning curve or where mistakes are costly
+
+**Rules:**
+- The aside is collapsible. Default it open on first visit (tracked in local storage); respect the user's collapsed preference on return.
+- Aside content maps to the current section: if the user is on the "Billing" tab, the aside shows billing help. Update aside content when the active section changes.
+- Include: a plain-English description of what the section does, a list of key concepts (in prose or a short definition list), and links to any relevant external documentation.
+- Keep aside width to 260–300px. It must not compete with the main content area.
+
+**Mantine AppShell aside:**
+```tsx
+import { AppShell, ScrollArea, Text, Title, Anchor } from '@mantine/core'
+
+// In AppShell
+<AppShell.Aside p="md" withBorder>
+  <ScrollArea h="100%">
+    <Stack gap="md">
+      <Title order={5}>About this page</Title>
+      <Text size="sm" c="dimmed">
+        Webhook endpoints receive real-time event notifications from your account.
+        Each event is delivered at least once; your endpoint must respond with HTTP
+        200 within 10 seconds or the delivery will be retried.
+      </Text>
+      <Title order={6} mt="xs">Key concepts</Title>
+      <Text size="sm"><strong>Signing secret</strong> — used to verify that events
+        came from us. Validate the <code>X-Webhook-Signature</code> header on every
+        request.
+      </Text>
+      <Anchor size="sm" href="/docs/webhooks" target="_blank">
+        Full webhook documentation →
+      </Anchor>
+    </Stack>
+  </ScrollArea>
+</AppShell.Aside>
+```
+
+---
+
+### Empty states as onboarding
+
+Empty states are the most-missed opportunity for embedded documentation. When a list, table, or dashboard is empty, that is the highest-leverage moment to explain what belongs there and how to create it.
+
+**Rules:**
+- Every empty state has: an icon or illustration, a heading naming what is empty, 1–2 sentences explaining what this thing is and why the user would want one, and a primary action button to create the first item.
+- Do not use generic empty state copy ("No items found", "Nothing here yet"). Be specific to the entity.
+- If the empty state is the result of a search or filter returning nothing, explain that specifically and offer to clear the filter — do not reuse the zero-data empty state.
+
+```tsx
+// Good — specific and actionable
+<EmptyState
+  icon={<IconWebhook size={48} stroke={1} />}
+  title="No webhook endpoints"
+  description="Webhook endpoints let you receive real-time event notifications in your own systems. Add one to start receiving events."
+  action={<Button leftSection={<IconPlus size={16} />}>Add endpoint</Button>}
+/>
+
+// Bad — generic and unhelpful
+<EmptyState title="No items" description="Nothing here yet." />
+```
+
+---
+
+### Embedded help sections
+
+For complex features, embed a collapsible "How this works" section directly on the page — above the content for first-time users, or below the content for reference. This replaces the need to read external documentation for the common case.
+
+**Rules:**
+- Use an `Accordion` or `Disclosure` pattern. Default it collapsed after first open (persist state in local storage).
+- Section title: "How this works" or "About [feature name]" — not "Help" (too generic).
+- Content: step-by-step overview of the workflow, definitions of key terms, and at least one concrete example.
+- Embedded help sections are most valuable on: settings pages, billing pages, developer/integration pages, and any multi-step flow.
+
+**Mantine implementation:**
+```tsx
+import { Accordion, Text, Code, List } from '@mantine/core'
+
+<Accordion variant="contained" mb="lg">
+  <Accordion.Item value="how-it-works">
+    <Accordion.Control>How webhooks work</Accordion.Control>
+    <Accordion.Panel>
+      <Stack gap="xs">
+        <Text size="sm">
+          When an event occurs in your account (e.g. a payment succeeds), we send
+          an HTTP POST request to your endpoint URL with a JSON payload describing
+          the event.
+        </Text>
+        <List size="sm" spacing={4}>
+          <List.Item>Your endpoint must respond with HTTP 200 within 10 seconds</List.Item>
+          <List.Item>Failed deliveries are retried up to 3 times with exponential backoff</List.Item>
+          <List.Item>Validate the <Code>X-Webhook-Signature</Code> header on every request</List.Item>
+        </List>
+      </Stack>
+    </Accordion.Panel>
+  </Accordion.Item>
+</Accordion>
+```
+
+---
+
+### Help UX checklist
+
+Before marking any frontend task as done, verify:
+
+- [ ] Every icon-only button has a tooltip that is also its `aria-label`
+- [ ] Every non-obvious form field has either help text (always visible) or a help icon popover
+- [ ] Every settings or configuration page has an aside or embedded help section explaining what the settings do
+- [ ] Every empty state is specific, explains what the thing is, and offers a primary action
+- [ ] No help content is buried behind a separate "Help" page when it could live inline
+- [ ] All help elements are keyboard-accessible and do not rely solely on hover
+
+---
+
 ## Screenshots
 
 After completing any UI changes, take screenshots of the affected routes and attach them to the task log. This is a required part of the definition of done for all frontend tasks.
