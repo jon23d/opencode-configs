@@ -87,7 +87,7 @@ All skills live in `skills/<name>/SKILL.md`. Agents load skills on demand.
 | `database-schema-design` | `skills/database-schema-design/SKILL.md` | When designing/modifying DB schema |
 | `javascript-application-design` | `skills/javascript-application-design/SKILL.md` | JS/TS project structure decisions |
 | `ui-design` | `skills/ui-design/SKILL.md` | When building/modifying UI |
-| `e2e-testing` | `skills/e2e-testing/SKILL.md` | When running or evaluating E2E tests |
+| `e2e-testing` | `skills/e2e-testing/SKILL.md` | When writing, running, or evaluating E2E tests. Engineers load when adding/modifying endpoints or UI flows. QA loads when running the suite. |
 | `openapi-spec-verification` | `skills/openapi-spec-verification/SKILL.md` | When verifying OpenAPI spec vs running API |
 | `swagger-ui-verification` | `skills/swagger-ui-verification/SKILL.md` | When checking API docs are served correctly |
 | `dockerfile-best-practices` | `skills/dockerfile-best-practices/SKILL.md` | When writing any Dockerfile |

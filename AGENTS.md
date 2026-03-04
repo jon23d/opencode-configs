@@ -46,17 +46,18 @@ A coding task is NEVER complete until all of the following are true:
 
 1. A failing test was written before any implementation code
 2. All tests pass — `pnpm test` from the monorepo root, full suite, zero errors (see `testing-best-practices` skill)
-3. The `code-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
-4. The `security-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
-5. The `observability-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
-6. The `@qa` agent has verified E2E tests pass and OpenAPI specs match running endpoints (if the task involved endpoint changes or UI work)
-7. Screenshots have been taken of all UI changes
-8. The `@devops-engineer` agent has been invoked and its `security-reviewer` has passed (if the task introduced a new service or changed deployment infrastructure)
-9. The `@developer-advocate` agent has updated `README.md`, `docker-compose.yml`, service mocks, and `docs/` to reflect any changes from this task (including follow-up items from `@devops-engineer`)
-10. The `@logger` agent has written a task log to `agent-logs/YYYY-MM-DD-HH-MM/task-name.md`
-11. The `@logger` agent has sent a Telegram notification (or confirmed it was skipped)
+3. Playwright E2E tests have been written for any new or modified endpoints or user-facing flows, and `pnpm test:e2e` passes (see `e2e-testing` skill)
+4. The `code-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
+5. The `security-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
+6. The `observability-reviewer` subagent has returned a `"pass"` or `"pass_with_issues"` verdict with no `critical` or `major` issues
+7. The `@qa` agent has verified E2E tests pass and OpenAPI specs match running endpoints (if the task involved endpoint changes or UI work)
+8. Screenshots have been taken of all UI changes
+9. The `@devops-engineer` agent has been invoked and its `security-reviewer` has passed (if the task introduced a new service or changed deployment infrastructure)
+10. The `@developer-advocate` agent has updated `README.md`, `docker-compose.yml`, service mocks, and `docs/` to reflect any changes from this task (including follow-up items from `@devops-engineer`)
+11. The `@logger` agent has written a task log to `agent-logs/YYYY-MM-DD-HH-MM/task-name.md`
+12. The `@logger` agent has sent a Telegram notification (or confirmed it was skipped)
 
-**Responsibility:** Items 1–5 are verified by the implementing engineer (`@backend-engineer`, `@frontend-engineer`, or both). Item 6 is handled by `@qa` (invoked by `build`). Item 7 is verified by `@frontend-engineer`. Item 8 is handled by `@devops-engineer` (invoked by `build` when a new service is introduced or deployment infrastructure changes). Item 9 is handled by `@developer-advocate` (invoked by `build`). Items 10–11 are handled by `@logger` (invoked by `build` after developer-advocate completes).
+**Responsibility:** Items 1–3 and 4–6 are verified by the implementing engineer (`@backend-engineer`, `@frontend-engineer`, or both). Item 7 is handled by `@qa` (invoked by `build`). Item 8 is verified by `@frontend-engineer`. Item 9 is handled by `@devops-engineer` (invoked by `build` when a new service is introduced or deployment infrastructure changes). Item 10 is handled by `@developer-advocate` (invoked by `build`). Items 11–12 are handled by `@logger` (invoked by `build` after developer-advocate completes).
 
 If you have written code and have not yet invoked all three reviewers, you have not
 finished the task. Do not summarise, do not ask what to do next, do not say the

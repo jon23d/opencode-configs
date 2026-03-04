@@ -5,6 +5,64 @@ Add new entries in reverse-chronological order (newest first).
 
 ---
 
+## Engineers write E2E tests; e2e-testing skill expanded
+
+**Date:** 2026-03-04
+**Status:** Resolved
+
+### Context
+
+The `e2e-testing` skill only covered how to *run* and *evaluate* existing Playwright
+tests. It had no guidance on how to *write* them. No agent was responsible for
+authoring E2E tests — the QA agent only ran and reported on them, and neither
+engineer agent was told to create them.
+
+This meant that projects using this config had no Playwright tests unless someone
+manually wrote them outside the workflow. The QA agent would either find nothing to
+run or report a gap, but nobody was tasked with filling it.
+
+### Decision
+
+**Engineers write E2E tests as part of their implementation workflow.** This is
+consistent with the existing "engineers own their tests" philosophy established by
+the TDD skill.
+
+Changes made:
+
+- **`skills/e2e-testing/SKILL.md`** — expanded from a runner-only skill to a
+  comprehensive authoring guide. New sections: when to write E2E tests, project
+  setup (Playwright config, directory structure, package.json script), writing tests
+  (test structure, page objects, selectors, authentication fixtures, API endpoint
+  tests, what to test, test data, waiting/timing). Original runner and reporting
+  sections preserved at the end.
+
+- **`agents/backend-engineer.md`** — added `e2e-testing` as an optional skill (load
+  when adding/modifying endpoints). Added workflow step 7: write Playwright E2E tests
+  for new/changed API endpoints, run `pnpm test:e2e`.
+
+- **`agents/frontend-engineer.md`** — added `e2e-testing` as an optional skill (load
+  when adding/modifying user-facing pages/flows). Added workflow step 7: write
+  Playwright E2E tests for new/changed UI flows, run `pnpm test:e2e`.
+
+- **`AGENTS.md`** — definition of done now has 12 items (was 11). New item 3:
+  "Playwright E2E tests have been written for any new or modified endpoints or
+  user-facing flows, and `pnpm test:e2e` passes."
+
+### Rationale
+
+The QA agent's role is verification — running the full suite, checking OpenAPI specs,
+and reporting gaps. It does not write code. Engineers are the right owners because
+they understand the feature's intended behaviour, have the acceptance criteria, and
+are already in the TDD loop. Writing E2E tests is a natural extension of writing
+unit tests: unit tests verify internal behaviour, E2E tests verify the external
+contract.
+
+The alternative — upgrading QA to an authoring role — would have required giving it
+write access and creating a secondary code-review loop, which conflicts with the
+"principle of least access" and adds workflow complexity.
+
+---
+
 ## In-app help UX standards added to ui-design skill
 
 **Date:** 2026-03-03
