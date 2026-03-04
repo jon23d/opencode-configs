@@ -48,15 +48,23 @@ Short prose description of what changed and why.
 ## Tests added
 - Description of each new test
 
+## Screenshots
+- `agent-logs/YYYY-MM-DD-HH-MM/screenshot-name.png` — description
+(or "None" if no UI work was done)
+
 ## Reviewer findings
 - code-reviewer: pass | pass_with_issues — <any notes>
 - security-reviewer: pass | pass_with_issues — <any notes>
+- observability-reviewer: pass | pass_with_issues — <any notes>
+
+## QA verdict
+pass | pass_with_issues | skipped — <any notes>
 
 ## Follow-up items
 - Any tech debt, deferred work, or open questions to track
 ```
 
-The slug should match the task description in kebab-case, e.g. `2025-03-01-add-user-auth.md`.
+The slug should be the task description in kebab-case, e.g. `add-user-auth.md`. The timestamp is the folder name, not part of the filename.
 
 ## Sprint / session planning
 

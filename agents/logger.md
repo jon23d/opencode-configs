@@ -11,6 +11,7 @@ permission:
     "*": deny
     "date *": allow
     "mkdir *": allow
+    "cp * agent-logs/*": allow
   task:
     "*": deny
 ---
@@ -18,7 +19,7 @@ permission:
 ## Agent contract
 
 - **Invoked by:** `build` (after engineer work is complete and all quality gates have passed)
-- **Input:** A structured message containing: task name, task ID, whether an architect plan was used, what was done (prose), files changed, tests added, reviewer verdicts and notes, QA verdict (if applicable), screenshot paths (if any), and follow-up items
+- **Input:** A structured message containing: task name, task ID, whether an architect plan was used, what was done (prose), files changed, tests added, reviewer verdicts and notes, QA verdict (if applicable), screenshot paths (if any — absolute paths as reported by frontend-engineer), and follow-up items
 - **Output:** Confirmation that the task log was written and the Telegram notification was sent (or skipped)
 - **Reports to:** `build`
 - **Default skills:** `project-manager` (always loaded — defines log format).
@@ -36,8 +37,9 @@ Load the `project-manager` skill before doing anything. It defines the exact for
 1. Load the `project-manager` skill
 2. Run `date +"%Y-%m-%d-%H-%M"` to get the current timestamp — do not guess the date
 3. Create the task log folder: `agent-logs/{timestamp}/`
-4. Write the task log to `agent-logs/{timestamp}/{task-name}.md` using the template from the `project-manager` skill, populated with the structured context you received
-5. Call the `send-telegram` tool **once** with a concise summary message. Do not call it more than once.
+4. **Copy screenshots** — for each screenshot path provided in the input, copy the file into the log folder: `cp {screenshot-path} agent-logs/{timestamp}/`. Use just the filename (no subdirectory). If no screenshots were provided, skip this step.
+5. Write the task log to `agent-logs/{timestamp}/{task-name}.md` using the template from the `project-manager` skill, populated with the structured context you received. In the Screenshots section, list each screenshot as `agent-logs/{timestamp}/{filename}` with a short description. Write "None" if no screenshots were provided.
+6. Call the `send-telegram` tool **once** with a concise summary message. Do not call it more than once.
    - On success, use this format:
      ```
      ✅ Task complete: {TASK_NAME}
@@ -52,8 +54,8 @@ Load the `project-manager` skill before doing anything. It defines the exact for
 
      Blocker: {specific blocker description}
      ```
-6. Append the notification result to the end of the task log
-7. Report back with: the path to the log file and the notification result
+7. Append the notification result to the end of the task log
+8. Report back with: the path to the log file and the notification result
 
 ## Rules
 
