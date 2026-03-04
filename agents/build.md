@@ -8,6 +8,13 @@ permission:
   edit: deny
   bash:
     "*": deny
+    "mkdir -p ~/worktrees/*": allow
+    "git init": allow
+    "git -C . rev-parse *": allow
+    "git worktree *": allow
+    "git symbolic-ref *": allow
+    "git push *": allow
+    "cp .env *": allow
   task:
     "*": allow
 ---
@@ -93,6 +100,18 @@ The `gitea-issues` skill is **not** delegated to engineers — it is used direct
 | `code-reviewer` | Invoked by engineers, not by you directly | JSON verdict |
 | `security-reviewer` | Invoked by engineers (and devops-engineer), not by you directly | JSON verdict |
 | `observability-reviewer` | Invoked by engineers, not by you directly | JSON verdict |
+
+## Worktree setup
+
+When the user describes a problem to solve or asks to claim a ticket, load the `worktrees` skill immediately and follow it before doing anything else. The skill covers:
+
+- Deriving the worktree path from the project name and ticket/problem slug
+- Creating the worktree and branch
+- Copying `.env` and delegating dependency installation to `@backend-engineer`
+- Passing the worktree path in every subsequent agent invocation
+- Pushing, opening a PR, and cleaning up on completion
+
+**Every Task invocation after worktree setup must include the worktree path** so subagents know where to operate. Never invoke an engineer, reviewer, or QA agent without stating: *"Your working directory for this task is `{worktree_path}`."*
 
 ## Gitea ticket integration
 
