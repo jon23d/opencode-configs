@@ -7,6 +7,7 @@ tools:
   write: false
   edit: false
 permission:
+  external_directory: allow
   read: allow
   edit: deny
   webfetch: deny

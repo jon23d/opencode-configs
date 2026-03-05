@@ -6,6 +6,7 @@ temperature: 0.2
 color: "#06b6d4"
 hidden: true
 permission:
+  external_directory: allow
   read: allow
   edit: allow
   bash:

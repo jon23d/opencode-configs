@@ -48,6 +48,15 @@ Slugification: lowercase, spaces and special characters become hyphens, max ~40 
 
 **Branch name**: `feature/{slug}`
 
+## Step 1b — Rename the session
+
+Once the slug is known (and the ticket number, if applicable), call `rename-session` with the appropriate title:
+
+- With a ticket: `Issue #N - {slug}` — e.g. `Issue #42 - add-user-auth`
+- Without a ticket: `{slug}` — e.g. `fix-login-redirect`
+
+Call this once and do not repeat it. If `rename-session` returns an error, log it and continue — session naming is not a blocker.
+
 ## Step 2 — Create or re-enter the worktree
 
 First, check whether a worktree for this branch already exists:
@@ -155,7 +164,16 @@ git symbolic-ref refs/remotes/origin/HEAD
 
 Strip `refs/remotes/origin/` to get the branch name (usually `main` or `develop`). Default to `main` if this fails.
 
-### 4. Push the feature branch
+### 4. Commit and push the feature branch
+
+Stage and commit all changes in the worktree:
+
+```bash
+git -C ~/worktrees/{project}/{slug} add -A
+git -C ~/worktrees/{project}/{slug} commit -m "{concise imperative summary of the work done}"
+```
+
+If there is nothing to commit (working tree clean), skip the commit and proceed to push. Then push:
 
 ```bash
 git push origin feature/{slug}
@@ -255,6 +273,7 @@ If removal fails due to untracked or modified files, report this rather than for
 - Worktree creation failure → report and stop; do not proceed without an isolated workspace
 - `.env` copy failure → report and continue; not a blocker
 - Dependency install failure → report and ask whether to continue or abort
+- `git commit` failure → report; do not push or open PR until resolved
 - `git push` failure → report; do not open PR until push succeeds
 - PR creation failure → report the error with the branch name so the user can open it manually
 - Worktree removal failure → report and leave it; never force-remove

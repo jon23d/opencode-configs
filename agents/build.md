@@ -5,6 +5,7 @@ model: github-copilot/claude-sonnet-4.6
 temperature: 0.2
 color: "#f59e0b"
 permission:
+  external_directory: allow
   read: allow
   edit: deny
   bash:
@@ -14,6 +15,8 @@ permission:
     "git -C . rev-parse *": allow
     "git worktree *": allow
     "git symbolic-ref *": allow
+    "git add *": allow
+    "git commit *": allow
     "git push *": allow
     "cp .env *": allow
   task:
@@ -107,6 +110,7 @@ The `gitea-issues` skill is **not** delegated to engineers — it is used direct
 When the user describes a problem to solve or asks to claim a ticket, load the `worktrees` skill immediately and follow it before doing anything else. The skill covers:
 
 - Deriving the worktree path from the project name and ticket/problem slug
+- **Renaming the session** to `Issue #N - slug` (or just `slug` if no ticket) via `rename-session`
 - Creating the worktree and branch
 - Copying `.env` and delegating dependency installation to `@backend-engineer`
 - Passing the worktree path in every subsequent agent invocation
