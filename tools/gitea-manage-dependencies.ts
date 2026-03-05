@@ -1,32 +1,9 @@
 import { tool } from "@opencode-ai/plugin"
-import { readFileSync } from "fs"
-import { join } from "path"
-
-function getGiteaConfig() {
-  const token = process.env.GITEA_ACCESS_TOKEN
-  if (!token) return null
-
-  let repoUrl = process.env.GITEA_REPO_URL
-  if (!repoUrl) {
-    try {
-      const configPath = join(process.cwd(), "gitea.json")
-      const file = JSON.parse(readFileSync(configPath, "utf-8"))
-      repoUrl = file.repoUrl
-    } catch {
-      // file missing or malformed — handled below
-    }
-  }
-
-  if (!repoUrl) return null
-
-  const url = new URL(repoUrl)
-  const parts = url.pathname.split("/").filter(Boolean)
-  return { baseUrl: url.origin, owner: parts[0], repo: parts[1], token }
-}
+import { getGiteaIssueConfig } from "./lib/agent-config"
 
 export default tool({
   description:
-    "List, add, or remove dependencies between Gitea issues. Gitea's dependency API uses internal issue IDs rather than display numbers — this tool resolves display numbers to IDs automatically. Requires GITEA_ACCESS_TOKEN env var and either GITEA_REPO_URL env var or a repoUrl set in the project's gitea.json.",
+    "List, add, or remove dependencies between Gitea issues. Gitea's dependency API uses internal issue IDs rather than display numbers — this tool resolves display numbers to IDs automatically. Requires GITEA_ACCESS_TOKEN env var and either GITEA_REPO_URL env var or issue_tracker.gitea.repo_url set in the project's agent-config.json.",
   args: {
     action: tool.schema
       .string()
@@ -42,9 +19,9 @@ export default tool({
       ),
   },
   async execute(args) {
-    const config = getGiteaConfig()
+    const config = getGiteaIssueConfig()
     if (!config) {
-      return "Gitea not configured — set GITEA_ACCESS_TOKEN and either GITEA_REPO_URL or add a repoUrl to gitea.json"
+      return "Gitea not configured — set GITEA_ACCESS_TOKEN and either GITEA_REPO_URL or add issue_tracker.gitea.repo_url to agent-config.json"
     }
 
     const { baseUrl, owner, repo, token } = config
@@ -55,10 +32,7 @@ export default tool({
     const base = `${baseUrl}/api/v1/repos/${owner}/${repo}`
 
     if (args.action === "list") {
-      const res = await fetch(
-        `${base}/issues/${args.issue_number}/dependencies`,
-        { headers }
-      )
+      const res = await fetch(`${base}/issues/${args.issue_number}/dependencies`, { headers })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         return `Failed to list dependencies for #${args.issue_number}: ${res.status} ${err.message ?? res.statusText}`
@@ -91,14 +65,11 @@ export default tool({
       const depId: number = depIssue.id
 
       const method = args.action === "add" ? "POST" : "DELETE"
-      const res = await fetch(
-        `${base}/issues/${args.issue_number}/dependencies`,
-        {
-          method,
-          headers,
-          body: JSON.stringify({ issue_id: depId }),
-        }
-      )
+      const res = await fetch(`${base}/issues/${args.issue_number}/dependencies`, {
+        method,
+        headers,
+        body: JSON.stringify({ issue_id: depId }),
+      })
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))

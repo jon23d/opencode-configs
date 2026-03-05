@@ -1,28 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
 import { readFileSync } from "fs"
-import { join, basename } from "path"
-
-function getGiteaConfig() {
-  const token = process.env.GITEA_ACCESS_TOKEN
-  if (!token) return null
-
-  let repoUrl = process.env.GITEA_REPO_URL
-  if (!repoUrl) {
-    try {
-      const configPath = join(process.cwd(), "gitea.json")
-      const file = JSON.parse(readFileSync(configPath, "utf-8"))
-      repoUrl = file.repoUrl
-    } catch {
-      // file missing or malformed — handled below
-    }
-  }
-
-  if (!repoUrl) return null
-
-  const url = new URL(repoUrl)
-  const parts = url.pathname.split("/").filter(Boolean)
-  return { baseUrl: url.origin, owner: parts[0], repo: parts[1], token }
-}
+import { basename } from "path"
+import { getGiteaHostConfig } from "./lib/agent-config"
 
 const MIME_TYPES: Record<string, string> = {
   png: "image/png",
@@ -36,19 +15,17 @@ const MIME_TYPES: Record<string, string> = {
 
 export default tool({
   description:
-    "Upload a file as an attachment to a Gitea issue or pull request. Returns the attachment URL suitable for embedding in markdown (e.g. screenshots). Requires GITEA_ACCESS_TOKEN env var and either GITEA_REPO_URL env var or a repoUrl set in the project's gitea.json.",
+    "Upload a file as an attachment to a Gitea issue or pull request. Returns the attachment URL suitable for embedding in markdown (e.g. screenshots). Requires GITEA_ACCESS_TOKEN env var and either GITEA_REPO_URL env var or git_host.gitea.repo_url set in the project's agent-config.json.",
   args: {
     issue_number: tool.schema
       .number()
       .describe("The issue or PR number to attach the file to"),
-    file_path: tool.schema
-      .string()
-      .describe("Absolute path to the file to upload"),
+    file_path: tool.schema.string().describe("Absolute path to the file to upload"),
   },
   async execute(args) {
-    const config = getGiteaConfig()
+    const config = getGiteaHostConfig()
     if (!config) {
-      return "Gitea not configured — set GITEA_ACCESS_TOKEN and either GITEA_REPO_URL or add a repoUrl to gitea.json"
+      return "Gitea git host not configured — set GITEA_ACCESS_TOKEN and either GITEA_REPO_URL or add git_host.gitea.repo_url to agent-config.json"
     }
 
     const { baseUrl, owner, repo, token } = config

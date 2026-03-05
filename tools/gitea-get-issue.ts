@@ -1,42 +1,16 @@
 import { tool } from "@opencode-ai/plugin"
-import { readFileSync } from "fs"
-import { join } from "path"
-
-function getGiteaConfig() {
-  const token = process.env.GITEA_ACCESS_TOKEN
-  if (!token) return null
-
-  // Prefer explicit env var; fall back to gitea.json in the config repo
-  let repoUrl = process.env.GITEA_REPO_URL
-  if (!repoUrl) {
-    try {
-      const configPath = join(process.cwd(), "gitea.json")
-      const file = JSON.parse(readFileSync(configPath, "utf-8"))
-      repoUrl = file.repoUrl
-    } catch {
-      // file missing or malformed — handled below
-    }
-  }
-
-  if (!repoUrl) return null
-
-  const url = new URL(repoUrl)
-  const parts = url.pathname.split("/").filter(Boolean)
-  return { baseUrl: url.origin, owner: parts[0], repo: parts[1], token }
-}
+import { getGiteaIssueConfig } from "./lib/agent-config"
 
 export default tool({
   description:
-    "Read a Gitea issue by its number. Returns the issue title, body, state, labels, assignees, and comments. Requires GITEA_ACCESS_TOKEN env var and either GITEA_REPO_URL env var or a repoUrl set in ~/.opencode/gitea.json.",
+    "Read a Gitea issue by its number. Returns the issue title, body, state, labels, assignees, and comments. Requires GITEA_ACCESS_TOKEN env var and either GITEA_REPO_URL env var or issue_tracker.gitea.repo_url set in the project's agent-config.json.",
   args: {
-    issue_number: tool.schema
-      .number()
-      .describe("The issue number to retrieve"),
+    issue_number: tool.schema.number().describe("The issue number to retrieve"),
   },
   async execute(args) {
-    const config = getGiteaConfig()
+    const config = getGiteaIssueConfig()
     if (!config) {
-      return "Gitea not configured — set GITEA_ACCESS_TOKEN and either GITEA_REPO_URL or add a repoUrl to gitea.json"
+      return "Gitea not configured — set GITEA_ACCESS_TOKEN and either GITEA_REPO_URL or add issue_tracker.gitea.repo_url to agent-config.json"
     }
 
     const { baseUrl, owner, repo, token } = config
@@ -62,9 +36,7 @@ export default tool({
     const comments = commentsRes.ok ? await commentsRes.json() : []
 
     const labelNames = (issue.labels ?? []).map((l: { name: string }) => l.name)
-    const assigneeNames = (issue.assignees ?? []).map(
-      (a: { login: string }) => a.login
-    )
+    const assigneeNames = (issue.assignees ?? []).map((a: { login: string }) => a.login)
 
     const commentBlock =
       comments.length === 0

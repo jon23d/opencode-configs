@@ -1,48 +1,17 @@
 import { tool } from "@opencode-ai/plugin"
-import { readFileSync } from "fs"
-import { join } from "path"
-
-function getGiteaConfig() {
-  const token = process.env.GITEA_ACCESS_TOKEN
-  if (!token) return null
-
-  let repoUrl = process.env.GITEA_REPO_URL
-  if (!repoUrl) {
-    try {
-      const configPath = join(process.cwd(), "gitea.json")
-      const file = JSON.parse(readFileSync(configPath, "utf-8"))
-      repoUrl = file.repoUrl
-    } catch {
-      // file missing or malformed — handled below
-    }
-  }
-
-  if (!repoUrl) return null
-
-  const url = new URL(repoUrl)
-  const parts = url.pathname.split("/").filter(Boolean)
-  return { baseUrl: url.origin, owner: parts[0], repo: parts[1], token }
-}
+import { getGiteaIssueConfig } from "./lib/agent-config"
 
 export default tool({
   description:
-    "Update an existing Gitea issue. Can change title, body, state (open/closed), and assignees. Only provided fields are changed. Requires GITEA_ACCESS_TOKEN env var and either GITEA_REPO_URL env var or a repoUrl set in ~/.opencode/gitea.json.",
+    "Update an existing Gitea issue. Can change title, body, state (open/closed), and assignees. Only provided fields are changed. Requires GITEA_ACCESS_TOKEN env var and either GITEA_REPO_URL env var or issue_tracker.gitea.repo_url set in the project's agent-config.json.",
   args: {
-    issue_number: tool.schema
-      .number()
-      .describe("The number of the issue to update"),
-    title: tool.schema
-      .string()
-      .optional()
-      .describe("New title for the issue"),
+    issue_number: tool.schema.number().describe("The number of the issue to update"),
+    title: tool.schema.string().optional().describe("New title for the issue"),
     body: tool.schema
       .string()
       .optional()
       .describe("New body / description for the issue (replaces existing body)"),
-    state: tool.schema
-      .string()
-      .optional()
-      .describe('New state: "open" or "closed"'),
+    state: tool.schema.string().optional().describe('New state: "open" or "closed"'),
     assignees: tool.schema
       .string()
       .optional()
@@ -51,9 +20,9 @@ export default tool({
       ),
   },
   async execute(args) {
-    const config = getGiteaConfig()
+    const config = getGiteaIssueConfig()
     if (!config) {
-      return "Gitea not configured — set GITEA_ACCESS_TOKEN and either GITEA_REPO_URL or add a repoUrl to gitea.json"
+      return "Gitea not configured — set GITEA_ACCESS_TOKEN and either GITEA_REPO_URL or add issue_tracker.gitea.repo_url to agent-config.json"
     }
 
     const { baseUrl, owner, repo, token } = config
@@ -63,14 +32,10 @@ export default tool({
     if (args.body !== undefined) payload.body = args.body
     if (args.state !== undefined) payload.state = args.state
     if (args.assignees !== undefined) {
-      payload.assignees = args.assignees
-        ? args.assignees.split(",").map((a) => a.trim())
-        : []
+      payload.assignees = args.assignees ? args.assignees.split(",").map((a) => a.trim()) : []
     }
 
-    if (Object.keys(payload).length === 0) {
-      return "No fields provided — nothing to update"
-    }
+    if (Object.keys(payload).length === 0) return "No fields provided — nothing to update"
 
     const res = await fetch(
       `${baseUrl}/api/v1/repos/${owner}/${repo}/issues/${args.issue_number}`,

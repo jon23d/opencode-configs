@@ -118,20 +118,35 @@ When the user describes a problem to solve or asks to claim a ticket, load the `
 
 **Every Task invocation after worktree setup must include the worktree path** so subagents know where to operate. Never invoke an engineer, reviewer, or QA agent without stating: *"Your working directory for this task is `{worktree_path}`."*
 
-## Gitea ticket integration
+## Issue tracker integration
 
-When the user provides a ticket number at the start of a session, check whether Gitea is configured by attempting to call `gitea-get-issue` with that number. If both `GITEA_REPO_URL` and `GITEA_ACCESS_TOKEN` are set, the tool will return the issue details. If either variable is missing, the tool will return a configuration message — treat this as "Gitea not available" and proceed without ticket tracking.
+At the start of every session, read `agent-config.json` to determine the active issue tracker provider (`issue_tracker.provider`). Then load the appropriate skill and follow its instructions.
 
-When Gitea is available:
+### Provider: `gitea`
 
-1. **Load the `gitea-issues` skill** before doing anything else.
-2. **Read the ticket** (`gitea-get-issue`) and use its description as the authoritative specification. If the user's verbal summary conflicts with the ticket body, surface the discrepancy and ask for clarification before proceeding.
-3. **Post an opening comment** via `gitea-add-comment` to signal that work has begun.
-4. **Track progress** — instruct agents to post comments at key checkpoints (plan confirmed, reviewers passed, blocked, etc.). Pass this instruction when invoking engineers.
-5. **Post a completion comment** via `gitea-add-comment` after the logger confirms the task log is written and all quality gates pass. Do not close the ticket — that is the user's or the team's decision.
-6. **Do not block engineering work on Gitea errors.** If a Gitea API call fails, report it to the user and continue — ticket tracking must never stall the task.
+Load the `gitea-issues` skill. The skill covers the full lifecycle using `gitea-get-issue`, `gitea-add-comment`, etc.
 
-When the user asks to see what tickets are available or to pick the next task, call `gitea-list-issues` to show open issues and let them choose.
+When the user provides a ticket number, check availability by calling `gitea-get-issue`. If configuration is missing, treat this as "Gitea not available" and proceed without ticket tracking.
+
+When the user asks to see available tickets, call `gitea-list-issues`.
+
+### Provider: `jira`
+
+Load the `jira` skill. The skill covers the full lifecycle using `jira-get-issue`, `jira-add-comment`, `jira-transition-issue`, etc.
+
+When the user provides a ticket key (e.g. `PROJ-123`), check availability by calling `jira-get-issue`. If configuration is missing or the skill returns an auth error, follow the instructions in the skill — it will tell the user exactly what to do.
+
+When the user asks to see available tickets, call `jira-search-issues` with appropriate JQL (e.g. `project = PROJ AND status != Done AND assignee = currentUser()`).
+
+### No provider configured
+
+If `agent-config.json` is missing or `issue_tracker.provider` is not set, proceed without ticket tracking and note this to the user.
+
+### General rules (all providers)
+
+- **Do not block engineering work on issue tracker errors.** If an API call fails, report it and continue — ticket tracking must never stall the task.
+- **Do not close or resolve tickets automatically** — that is the user's decision.
+- **Post a completion comment** after all quality gates pass and the PR is opened.
 
 ## Quality gates
 

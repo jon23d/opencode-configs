@@ -52,7 +52,8 @@ Slugification: lowercase, spaces and special characters become hyphens, max ~40 
 
 Once the slug is known (and the ticket number, if applicable), call `rename-session` with the appropriate title:
 
-- With a ticket: `Issue #N - {slug}` — e.g. `Issue #42 - add-user-auth`
+- With a Gitea ticket: `Issue #N - {slug}` — e.g. `Issue #42 - add-user-auth`
+- With a Jira ticket: `PROJ-N - {slug}` — e.g. `PROJ-42 - add-user-auth`
 - Without a ticket: `{slug}` — e.g. `fix-login-redirect`
 
 Call this once and do not repeat it. If `rename-session` returns an error, log it and continue — session naming is not a blocker.

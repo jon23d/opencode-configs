@@ -40,8 +40,8 @@ All agents live in `agents/`. The canonical orchestration model is:
 
 | Agent | File | Role |
 |---|---|---|
-| `build` | `agents/build.md` | Default. Product owner and orchestrator. Scopes work, delegates, verifies quality gates. Invokes all other agents. |
-| `backend-engineer` | `agents/backend-engineer.md` | Implements API endpoints, services, DB migrations, business logic. TDD. Invokes code-reviewer and security-reviewer. |
+| `build` | `agents/build.md` | Default. Product owner and orchestrator. Scopes work, manages issue tracker, delegates, verifies quality gates, commits, opens PRs. |
+| `backend-engineer` | `agents/backend-engineer.md` | Implements API endpoints, services, DB migrations, business logic. TDD. Invokes code-reviewer, security-reviewer, observability-reviewer. |
 | `frontend-engineer` | `agents/frontend-engineer.md` | Implements React components and client-side logic. TDD. Screenshots all UI changes. Invokes reviewers. |
 | `devops-engineer` | `agents/devops-engineer.md` | Produces Dockerfiles, Kubernetes manifests, CI/CD pipelines. Provider-agnostic. Confirms before K8s. Invokes security-reviewer. |
 
@@ -55,13 +55,13 @@ All agents live in `agents/`. The canonical orchestration model is:
 | `observability-reviewer` | `agents/observability-reviewer.md` | Reviews code for observability gaps across logging, metrics, tracing, health, error capture, and alertability. Returns structured JSON verdict. | `backend-engineer`, `frontend-engineer` |
 | `qa` | `agents/qa.md` | Playwright E2E tests + OpenAPI spec verification. Returns structured JSON verdict. | `build` (after engineer success, when endpoints/UI changed) |
 | `developer-advocate` | `agents/developer-advocate.md` | Keeps README, docker-compose, external mocks, and docs/ up to date. | `build` (every ticket, after quality gates pass) |
-| `logger` | `agents/logger.md` | Writes task log, sends Telegram notification. | `build` (after developer-advocate completes) |
+| `logger` | `agents/logger.md` | Sends Telegram notification with PR URL. Input: PR URL + one-sentence summary. | `build` (after PR is opened) |
 
 ### Standard workflow
 
 ```
 User request
-  → build (clarify, check roadmap)
+  → build (read agent-config.json, load issue tracker skill, set up worktree, rename session)
   → architect (plan — if non-trivial)
   → build (review plan)
   → backend-engineer and/or frontend-engineer (TDD → code-reviewer → security-reviewer → observability-reviewer)
@@ -69,8 +69,9 @@ User request
   → qa (E2E + OpenAPI — if endpoints/UI changed)
   → devops-engineer (if new service or infra change)
   → developer-advocate (docs, docker-compose, mocks)
-  → logger (task log + Telegram)
-  → build (update roadmap, report to user)
+  → build (upload screenshots, commit, push, open PR with full body as task log)
+  → logger (Telegram notification with PR URL)
+  → build (report to user, leave worktree for review)
 ```
 
 ---
@@ -87,14 +88,112 @@ All skills live in `skills/<name>/SKILL.md`. Agents load skills on demand.
 | `database-schema-design` | `skills/database-schema-design/SKILL.md` | When designing/modifying DB schema |
 | `javascript-application-design` | `skills/javascript-application-design/SKILL.md` | JS/TS project structure decisions |
 | `ui-design` | `skills/ui-design/SKILL.md` | When building/modifying UI |
-| `e2e-testing` | `skills/e2e-testing/SKILL.md` | When writing, running, or evaluating E2E tests. Engineers load when adding/modifying endpoints or UI flows. QA loads when running the suite. |
+| `e2e-testing` | `skills/e2e-testing/SKILL.md` | When writing, running, or evaluating E2E tests |
 | `openapi-spec-verification` | `skills/openapi-spec-verification/SKILL.md` | When verifying OpenAPI spec vs running API |
 | `swagger-ui-verification` | `skills/swagger-ui-verification/SKILL.md` | When checking API docs are served correctly |
 | `dockerfile-best-practices` | `skills/dockerfile-best-practices/SKILL.md` | When writing any Dockerfile |
 | `deployment-planning` | `skills/deployment-planning/SKILL.md` | When designing CI/CD or release strategy |
 | `kubernetes-manifests` | `skills/kubernetes-manifests/SKILL.md` | When writing K8s manifests (confirm with user first) |
-| `observability` | `skills/observability/SKILL.md` | Loaded automatically by `observability-reviewer`. Also load when implementing logging, metrics, tracing, or health checks. |
-| `project-manager` | `skills/project-manager/SKILL.md` | When writing task logs or managing roadmap |
+| `observability` | `skills/observability/SKILL.md` | Loaded by `observability-reviewer`. Also load when implementing logging, metrics, tracing, or health checks. |
+| `project-manager` | `skills/project-manager/SKILL.md` | When managing task context — not for roadmap (roadmap removed) |
+| `gitea-issues` | `skills/gitea-issues/SKILL.md` | Loaded by `build` when `issue_tracker.provider = "gitea"` in `agent-config.json` |
+| `jira` | `skills/jira/SKILL.md` | Loaded by `build` when `issue_tracker.provider = "jira"` in `agent-config.json` |
+| `worktrees` | `skills/worktrees/SKILL.md` | Loaded by `build` at the start of every session before implementation begins |
+
+---
+
+## Tools
+
+All tools live in `tools/`. Two shared library modules live in `tools/lib/`.
+
+### Shared libraries
+
+| File | Purpose |
+|---|---|
+| `tools/lib/agent-config.ts` | Reads `agent-config.json` from the project root. Exports `getGiteaIssueConfig()` and `getGiteaHostConfig()`. |
+| `tools/lib/jira-client.ts` | Jira Cloud OAuth2 client. Exports `getJiraClient()` (handles token refresh, cloud ID resolution), `toAdf()`, `adfToText()`. |
+
+### Gitea tools
+
+Gitea issue tools read from `agent-config.json → issue_tracker.gitea.repo_url`.
+Gitea host tools (PR, attachments) read from `agent-config.json → git_host.gitea.repo_url`.
+Both respect `GITEA_REPO_URL` env var as an override. Auth: `GITEA_ACCESS_TOKEN`.
+
+| Tool | Purpose |
+|---|---|
+| `gitea-get-issue` | Read issue + comments |
+| `gitea-list-issues` | List issues by state |
+| `gitea-create-issue` | Create a new issue |
+| `gitea-update-issue` | Update title, body, state, assignees |
+| `gitea-add-comment` | Post a comment |
+| `gitea-manage-dependencies` | List/add/remove issue dependencies (resolves display number → internal ID automatically) |
+| `gitea-create-pr` | Open a pull request |
+| `gitea-upload-attachment` | Upload file as issue/PR attachment (returns markdown embed URL) |
+
+### Jira tools
+
+All Jira tools read from `agent-config.json → issue_tracker.jira`. Auth: OAuth2 via
+`JIRA_ACCESS_TOKEN` / `JIRA_REFRESH_TOKEN` + `JIRA_CLIENT_ID` + `JIRA_CLIENT_SECRET`.
+See `JIRA_SETUP.md` for the full auth setup and re-authentication instructions.
+
+| Tool | Purpose |
+|---|---|
+| `jira-get-issue` | Read issue + comments (ADF → plain text) |
+| `jira-search-issues` | JQL search |
+| `jira-create-issue` | Create issue (plain text → ADF) |
+| `jira-update-issue` | Update fields |
+| `jira-add-comment` | Post a comment |
+| `jira-transition-issue` | Change status (lists available transitions if name omitted) |
+| `jira-assign-issue` | Assign by accountId |
+| `jira-link-pr` | Post PR URL as comment; optionally create issue-to-issue links |
+| `jira-upload-attachment` | Upload screenshot/file attachment |
+| `jira-search-users` | Resolve display name/email → accountId |
+
+### Other tools
+
+| Tool | Purpose |
+|---|---|
+| `send-telegram` | Send Telegram notification. Requires `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`. See `TELEGRAM_SETUP.md`. |
+| `rename-session` | Rename the current OpenCode session. Called by `build` after ticket and slug are known: `Issue #N - slug` (Gitea), `PROJ-N - slug` (Jira). Uses `sessionID` from tool context via `PATCH /session/{id}`. |
+
+---
+
+## Per-project configuration: `agent-config.json`
+
+Each project repo (not this config repo) should have an `agent-config.json` at its root:
+
+```json
+{
+  "issue_tracker": {
+    "provider": "gitea",
+    "gitea": { "repo_url": "https://git.example.com/owner/repo" }
+  },
+  "git_host": {
+    "provider": "gitea",
+    "gitea": { "repo_url": "https://git.example.com/owner/repo" }
+  }
+}
+```
+
+Or with Jira for issues and Gitea for code hosting:
+
+```json
+{
+  "issue_tracker": {
+    "provider": "jira",
+    "jira": {
+      "base_url": "https://mycompany.atlassian.net",
+      "project_key": "PROJ"
+    }
+  },
+  "git_host": {
+    "provider": "gitea",
+    "gitea": { "repo_url": "https://git.example.com/owner/repo" }
+  }
+}
+```
+
+This file contains no secrets. Secrets stay in environment variables. See `GITEA_SETUP.md` and `JIRA_SETUP.md` for full setup instructions.
 
 ---
 
@@ -106,22 +205,33 @@ These principles have shaped the configuration and should inform future changes:
 JSON verdict. Agents know exactly what pass/fail means. Build can read verdicts
 programmatically.
 
-**Principle of least access.** Reviewer subagents (code-reviewer, security-reviewer)
-have no write or bash access. Read-only agents cannot accidentally mutate state.
+**Principle of least access.** Reviewer subagents (code-reviewer, security-reviewer,
+observability-reviewer) have no write or bash access. Read-only agents cannot
+accidentally mutate state.
 
 **Specialisation over generalism.** Backend and frontend engineers are separate agents
-with separate permissions and skills, not a single "engineer" agent. This produces
-more consistent, role-appropriate output.
+with separate permissions and skills. `build` owns orchestration; engineers own
+implementation.
 
 **Skills encode conventions; agents encode workflow.** Conventions about how to write
-code live in skills (which can be updated independently). Agent files encode
-orchestration logic and role boundaries.
+code live in skills (updated independently). Agent files encode orchestration logic
+and role boundaries.
 
 **Provider-agnostic infrastructure.** devops-engineer avoids cloud-vendor lock-in
 by default. Docker is the portability layer.
 
-**Every task ends with documentation and a log.** developer-advocate and logger run
-on every ticket. This is non-negotiable in the definition of done.
+**PR body is the task log.** There is no separate log file. The PR body contains the
+full summary, changed files table, reviewer verdicts, embedded screenshots, and
+follow-up items. The logger sends a Telegram notification with the PR URL; that is
+its only job.
+
+**Issue tracker is a signal, not a blocker.** Ticket tracking (Gitea or Jira) enriches
+the workflow but never stalls it. If an API call fails, the agent reports it and
+continues. Closing/resolving tickets is always the human's decision.
+
+**Worktrees for isolation.** Every session operates in a dedicated git worktree
+(`~/worktrees/{project}/{slug}`). This enables multiple concurrent workstreams and
+clean separation between sessions.
 
 ---
 
@@ -129,37 +239,27 @@ on every ticket. This is non-negotiable in the definition of done.
 
 See `_meta/decisions.md` for full context and history.
 
-### Observability reviewer (resolved)
-
-`agents/observability-reviewer.md` and `skills/observability/SKILL.md` have been
-added. The agent is a pure reviewer subagent (read-only, no write access), modelled
-on `security-reviewer`. It is a required quality gate: both `backend-engineer` and
-`frontend-engineer` must invoke it after security-reviewer passes, before reporting
-back to build. The skill is stack-agnostic, with Node.js/TypeScript conventions
-documented and Python/Go as stubs to be expanded when those languages are adopted.
-
----
-
-## Tools
-
-`tools/send-telegram.ts` — Custom tool used by the `logger` agent to send Telegram
-notifications. Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` environment
-variables. See `TELEGRAM_SETUP.md` for setup.
-
 ---
 
 ## Notes for Future Conversations
 
-- **The README.md at the repo root is the human-facing doc.** It may lag slightly
-  behind the actual state of the repo. Trust the files in `agents/` and `skills/`
-  over the README when there is a discrepancy.
-- **AGENTS.md is the canonical definition of done.** If you are checking whether a
+- **`agent-config.json` lives in the project repo, not this config repo.** It is
+  per-project and non-secret. The tools read it from `process.cwd()` at runtime.
+- **`AGENTS.md` is the canonical definition of done.** If you are checking whether a
   workflow step is required, AGENTS.md is authoritative.
+- **The `worktrees` skill is always loaded** at the start of every session, before
+  any issue tracker skill.
+- **The issue tracker skill is provider-specific.** `build` reads `agent-config.json`,
+  checks `issue_tracker.provider`, and loads either `gitea-issues` or `jira`.
+- **Session is renamed** to `Issue #N - slug` or `PROJ-N - slug` as soon as the
+  ticket and slug are known (Step 1b of the worktrees skill).
+- **Commit, push, and PR are all owned by `build`.** No subagent commits. Build runs
+  `git add -A`, `git commit`, `git push`, then calls `gitea-create-pr`.
 - **When proposing a new agent,** follow the pattern in `agents/security-reviewer.md`
   (for read-only subagents) or `agents/devops-engineer.md` (for implementing primaries).
-  Every agent needs: a frontmatter block, an agent contract section, and clear role
-  boundaries with adjacent agents.
 - **When proposing a new skill,** the skill should be self-contained — an agent should
   be able to load it cold and know exactly what conventions to apply.
 - **The current tech stack** is Node.js / TypeScript, pnpm, React, PostgreSQL + Prisma,
-  Playwright. The config is being designed to accommodate additional languages in future.
+  Playwright. The config is designed to accommodate additional languages in future.
+- **Jira refresh tokens expire after 90 days of inactivity.** When expired, Jira tools
+  return a clear message with re-auth instructions pointing to `JIRA_SETUP.md`.

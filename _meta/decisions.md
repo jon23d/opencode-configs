@@ -5,6 +5,121 @@ Add new entries in reverse-chronological order (newest first).
 
 ---
 
+## Jira Cloud integration added; config migrated to `agent-config.json`
+
+**Date:** 2026-03-05
+**Status:** Resolved
+
+### Context
+
+The existing Gitea plugin covered issue tracking for Gitea-hosted projects. The team also uses Jira Cloud for issue tracking. We needed a provider-agnostic config structure that supports either system without requiring code changes, and a full Jira tool suite comparable in capability to the Gitea suite.
+
+Additionally, the per-project config file `gitea.json` was renamed to `agent-config.json` to reflect that it configures all integrations, not just Gitea.
+
+### Decisions
+
+**Config migration: `gitea.json` → `agent-config.json`**
+
+The new schema separates issue tracking from git hosting, since these can be different systems:
+
+```json
+{
+  "issue_tracker": { "provider": "gitea|jira", "gitea": {...}, "jira": {...} },
+  "git_host": { "provider": "gitea", "gitea": { "repo_url": "..." } }
+}
+```
+
+All Gitea issue tools now read from `issue_tracker.gitea.repo_url`; PR/attachment tools read from `git_host.gitea.repo_url`. A shared library module (`tools/lib/agent-config.ts`) exports `getGiteaIssueConfig()` and `getGiteaHostConfig()` so tools no longer duplicate the config-reading logic.
+
+**Jira Cloud OAuth2 authentication**
+
+Jira Cloud uses 3-legged OAuth2. Since OpenCode runs inside local VMs where a browser redirect to localhost cannot be caught programmatically, the auth flow is one-time-manual: the user completes the browser flow, copies the tokens, and stores them as env vars (`JIRA_REFRESH_TOKEN`, `JIRA_CLIENT_ID`, `JIRA_CLIENT_SECRET`). The `jira-client.ts` library handles automatic token refresh for the duration of a session. When the refresh token expires (90 days of inactivity), tools return a clear error message directing the developer to `JIRA_SETUP.md`.
+
+**Jira tool suite** (10 tools)
+
+`jira-get-issue`, `jira-search-issues`, `jira-create-issue`, `jira-update-issue`, `jira-add-comment`, `jira-transition-issue`, `jira-assign-issue`, `jira-link-pr`, `jira-upload-attachment`, `jira-search-users`.
+
+Key implementation notes:
+- Jira API v3 uses Atlassian Document Format (ADF), not Markdown. `toAdf()` and `adfToText()` helpers in `jira-client.ts` handle conversion.
+- Jira Cloud identifies users by opaque `accountId`, not username. `jira-search-users` resolves names to account IDs.
+- `jira-transition-issue` fetches available transitions before applying one (transition IDs vary by project workflow).
+- `jira-upload-attachment` requires `X-Atlassian-Token: no-check` header and must not send `Content-Type: application/json` (multipart).
+- Cloud ID is resolved dynamically from `https://api.atlassian.com/oauth/token/accessible-resources` and cached in `process.env.JIRA_CLOUD_ID` for the session.
+- PR linking is done via `jira-link-pr` which posts the PR URL as a comment (Jira Cloud remote link API requires app-level scopes not in 3LO).
+
+**Provider-aware skill loading in `build.md`**
+
+The build agent reads `agent-config.json` at session start and loads either `gitea-issues` or `jira` skill based on `issue_tracker.provider`. A "no provider" fallback proceeds without ticket tracking.
+
+**`skills/jira/SKILL.md`** covers the full Jira lifecycle: configuration check, session start, reading comments (ADF rendered), status transitions, dependencies via JQL, user assignment, PR linking, screenshot upload.
+
+**Shared library modules**
+
+`tools/lib/agent-config.ts` and `tools/lib/jira-client.ts` are shared TypeScript modules imported by the respective tools. This replaced the copy-pasted `getGiteaConfig()` function that existed in every Gitea tool.
+
+---
+
+## Worktree workflow; PR-as-log; session naming; commit ownership
+
+**Date:** 2026-03-05
+**Status:** Resolved
+
+### Context
+
+Several related workflow improvements were made in the same session to establish a complete isolated-workstream model.
+
+### Decisions
+
+**Git worktrees for session isolation**
+
+Each session now operates in a dedicated git worktree at `~/worktrees/{project}/{slug}`. The `worktrees` skill (always loaded at session start) handles the full lifecycle: ensure git repo exists → derive path → rename session → create/re-enter worktree → copy `.env` → install dependencies. On review feedback, the existing worktree is re-entered (not recreated). Worktrees are cleaned up only on explicit user confirmation.
+
+**Session naming via `rename-session` tool**
+
+A `rename-session` tool calls `PATCH /session/{sessionID}` on the local OpenCode API (port 4096) to set a human-readable session title. The worktrees skill Step 1b calls it as soon as slug and ticket are known:
+- Gitea: `Issue #N - slug`
+- Jira: `PROJ-N - slug`
+- No ticket: `slug`
+
+**`build` owns commit, push, and PR**
+
+After quality gates pass, `build` runs `git add -A`, `git commit`, `git push origin feature/{slug}`, then calls `gitea-create-pr`. No subagent commits. This was a gap in the original design — the worktrees skill documented push but not commit, leaving an empty branch.
+
+**PR body is the task log**
+
+There is no separate log file. The PR body (written by `build` following the template in the worktrees skill) contains: summary, changes table, tests added, quality gate verdicts, embedded screenshots, documentation updates, follow-up items, and `Refs #N`. The `logger` agent's only remaining job is sending the Telegram notification with the PR URL.
+
+**Screenshot upload to issue tracker before PR creation**
+
+Screenshots are uploaded to the ticket (via `gitea-upload-attachment` or `jira-upload-attachment`) before the PR is opened, so the embed URLs exist when the PR body is composed.
+
+---
+
+## Gitea plugin added; `external_directory` permission; file access model
+
+**Date:** 2026-03-05
+**Status:** Resolved
+
+### Context
+
+The first major addition to this config repo in this session was a Gitea issue-tracking plugin, followed by resolving a persistent file-access-outside-project-directory problem.
+
+### Decisions
+
+**Gitea plugin (initial version)**
+
+Eight Gitea tools were added (later migrated to use `agent-config.json` — see above). The `gitea-issues` skill covers session lifecycle: read ticket → post opening comment → track progress → post completion comment. Auto-closing tickets was explicitly rejected — the user manages ticket state.
+
+**`external_directory: allow` permission**
+
+OpenCode was prompting "Access files outside the project directory" on every cross-directory operation. The correct config key is `external_directory` (not just `read`). Added globally to `opencode.json` and to every agent's frontmatter. The key `"external_directory": "allow"` in the `permission` block controls this; it is distinct from the `read` permission.
+
+**`opencode.json` global defaults**
+
+A root-level `opencode.json` was added with `permission: { read: allow, write: allow, external_directory: allow }` as global defaults that all agents inherit unless they override.
+
+---
+
 ## Engineers write E2E tests; e2e-testing skill expanded
 
 **Date:** 2026-03-04
