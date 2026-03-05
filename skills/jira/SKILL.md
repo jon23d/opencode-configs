@@ -9,7 +9,7 @@ compatibility: opencode
 
 Load this skill at the start of any session when `agent-config.json` has `issue_tracker.provider = "jira"`. It covers the full issue lifecycle from picking up a ticket to linking the final PR.
 
-Do not load this skill alongside `gitea-issues` — use one or the other based on the configured provider.
+Do not load this skill alongside `gitea-issues` or `github-issues` — use one based on the configured provider.
 
 ## Configuration check
 
@@ -102,14 +102,33 @@ Never guess or fabricate an `accountId`.
 When the PR is opened (from the worktrees skill completion sequence), call `jira-link-pr`:
 
 - `issue_key`: the Jira ticket key
-- `pr_url`: the PR URL returned by `gitea-create-pr` (or equivalent)
+- `pr_url`: the PR URL returned by `gitea-create-pr` or `github-create-pr`
 - `pr_title`: the PR title
 
 This posts `🔀 PR opened: [title](url)` as a comment on the ticket.
 
-## Uploading screenshots
+## Screenshots
 
-If screenshots are available, upload them to the Jira ticket using `jira-upload-attachment` before composing the PR body, then embed the returned URLs in the PR body's Screenshots section.
+Screenshots are committed to the feature branch in the `agent-logs/YYYY-MM-DD-{slug}/` folder (managed by the `worktrees` skill). The PR body embeds them using relative paths:
+
+```markdown
+![description](agent-logs/YYYY-MM-DD-slug/filename.png)
+```
+
+Both Gitea and GitHub render these inline in the PR. `jira-upload-attachment` is still available if you want to attach a screenshot to the Jira ticket itself for visibility in the issue tracker, but it is not required for the PR.
+
+## On completion
+
+When the PR is opened, call `jira-link-pr` to link the PR on the ticket, then post a comment:
+
+```
+✅ Complete. All quality gates passed.
+
+PR: {pr_url}
+Task log: agent-logs/YYYY-MM-DD-{slug}/log.md
+```
+
+**Do not close or mark the ticket Done.** The user manages final ticket state.
 
 ## Tool reference
 

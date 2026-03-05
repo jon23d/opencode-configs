@@ -5,6 +5,109 @@ Add new entries in reverse-chronological order (newest first).
 
 ---
 
+## agent-logs folder; two-document model for task records
+
+**Date:** 2026-03-05
+**Status:** Resolved
+
+### Context
+
+The previous design made the PR body the task log — a single document serving both human reviewers and agents. This created two problems: the PR body became cluttered with JSON verdicts and tradeoff notes unsuitable for human reviewers, and GitHub's lack of a file attachment API meant screenshots could not be embedded without an external upload step.
+
+### Decisions
+
+**Two documents with distinct audiences**
+
+Every task produces two documents:
+
+1. `agent-logs/YYYY-MM-DD-{slug}/log.md` — the detailed agent record, intended for agents doing future analysis, heuristics, or retrospectives. Contains: implementation plan and what was kept/modified/rejected, tradeoffs and their rationale, full reviewer verdicts (JSON), errors and complications, follow-up items with reasoning, engineer confidence notes.
+
+2. **PR body** — the clean human summary, intended for code reviewers and team members. Contains: 2–4 sentence prose summary, compact changed-files table, quality gates table (pass/fail only), embedded screenshots, brief follow-up list, and a link to `log.md` for anyone who wants the full detail.
+
+**Screenshots committed to the repo, not uploaded**
+
+Screenshots are saved by `@frontend-engineer` to the `agent-logs/YYYY-MM-DD-{slug}/` folder in the worktree. The PR body embeds them using standard relative-path markdown:
+
+```markdown
+![description](agent-logs/2026-03-05-42-add-user-auth/screenshot.png)
+```
+
+Both GitHub and Gitea render these inline in PRs. No upload API is required. This approach is provider-agnostic and eliminates the separate upload step that previously existed for Gitea and Jira.
+
+**`jira-upload-attachment` and `gitea-upload-attachment` demoted**
+
+These tools are no longer called as part of the PR flow. They remain available if screenshots are wanted inside the issue tracker itself (i.e. directly on the Gitea issue or Jira ticket), but the PR embedding is now fully handled via committed files.
+
+**`worktrees` skill updated**
+
+- Step 1c derives the agent-logs path: `agent-logs/YYYY-MM-DD-{slug}/`
+- Frontend-engineer invocations include the agent-logs path so screenshots land in the right place
+- Step 3 (previously "upload screenshots") removed
+- New step: write `log.md` before composing the PR body
+- PR body template rewritten for human audience (clean summary + relative-path screenshot embeds + link to log.md)
+- PR open step updated to mention both `gitea-create-pr` and `github-create-pr` with provider selection
+- Post-PR step: second commit to fill in the PR URL in `log.md`
+
+**Completion comment pattern**
+
+All three issue tracker skills now post a consistent final comment when the PR is opened:
+
+```
+✅ Complete. All quality gates passed.
+
+PR: {pr_url}
+Task log: agent-logs/YYYY-MM-DD-{slug}/log.md
+```
+
+---
+
+## GitHub integration added as third provider option
+
+**Date:** 2026-03-05
+**Status:** Resolved
+
+### Context
+
+The config already supported Gitea (issue tracking + git hosting) and Jira (issue tracking). GitHub is widely used for both hosting and issue tracking, including by teams that want to migrate away from Gitea or use GitHub for open-source projects. We needed to add GitHub as a first-class optional provider, consistent with the existing provider-agnostic architecture.
+
+### Decisions
+
+**Authentication: PAT instead of OAuth2**
+
+GitHub uses a Personal Access Token rather than the 3-legged OAuth2 flow required by Jira. The token is stored as `GITHUB_ACCESS_TOKEN` and used as `Authorization: Bearer {token}`. No browser flow or token refresh is required. Fine-grained tokens (repository-scoped, permission-scoped) are recommended over classic tokens.
+
+**GitHub Enterprise Server support**
+
+`parseGithubUrl()` in `tools/lib/agent-config.ts` inspects the hostname of `repo_url`. If the hostname is `github.com`, the API base is `https://api.github.com/repos/{owner}/{repo}`. For any other hostname, it falls back to `{origin}/api/v3/repos/{owner}/{repo}` (the GitHub Enterprise Server API path). No additional config key is needed.
+
+**GitHub tool suite** (6 tools)
+
+`github-get-issue`, `github-list-issues`, `github-create-issue`, `github-update-issue`, `github-add-comment`, `github-create-pr`.
+
+Key implementation notes:
+- All requests use `Authorization: Bearer`, `Accept: application/vnd.github+json`, and `X-GitHub-Api-Version: 2022-11-28`.
+- The issues endpoint (`GET /repos/{owner}/{repo}/issues`) returns pull requests mixed in with issues. `github-list-issues` filters client-side using `!i.pull_request`.
+- `github-create-pr` includes a `draft` boolean parameter (not present in `gitea-create-pr`).
+- There is no issue dependency API — `github-manage-dependencies` was intentionally omitted.
+- There is no file attachment API — screenshots must be committed to the branch or hosted externally and referenced by URL.
+
+**Skills: `github-issues`**
+
+`skills/github-issues/SKILL.md` follows the same session lifecycle pattern as `gitea-issues`: read issue, read comments, post opening comment, post progress comments, post PR link comment. Key differences documented in the skill:
+- No status transitions — GitHub state is simply `open` / `closed`.
+- No attachment API — screenshots are committed to `docs/screenshots/` on the branch.
+- `Refs #N` in the PR body creates GitHub's automatic cross-reference.
+
+**`build.md` updated**
+
+A new `Provider: github` section was added to the issue tracker integration block. The skill delegation note was updated to list all three provider skills. The PR step was updated to mention `github-create-pr` alongside `gitea-create-pr`.
+
+**`agent-config.json` schema extension**
+
+`tools/lib/agent-config.ts` was updated to add `github?: { repo_url?: string }` to both `issue_tracker` and `git_host` in the `AgentConfig` interface, and to export `getGithubIssueConfig()` and `getGithubHostConfig()`.
+
+---
+
 ## Jira Cloud integration added; config migrated to `agent-config.json`
 
 **Date:** 2026-03-05

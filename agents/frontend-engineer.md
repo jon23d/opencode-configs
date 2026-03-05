@@ -62,8 +62,8 @@ Load skills before reading the codebase. Skills shape your approach — loading 
 11. If `security-reviewer` returns `"fail"`, address all issues, then re-invoke both reviewers
 12. Once security-reviewer passes, invoke `observability-reviewer` with the same files
 13. If `observability-reviewer` returns `"fail"`, address all issues, then re-invoke all three reviewers from step 8
-14. Take screenshots of all created or modified UI per the `ui-design` skill
-15. Report back to `build` with: files changed, tests added (unit and E2E), reviewer verdicts and notes, screenshot paths, and any follow-up items
+14. Take screenshots of all created or modified UI per the `ui-design` skill. Save each screenshot to the agent-logs folder provided by `build` at invocation time — create the folder if it does not exist. Name screenshots descriptively (e.g. `login-form.png`, `error-state-empty-email.png`).
+15. Report back to `build` with: files changed, tests added (unit and E2E), reviewer verdicts and notes, screenshot filenames (relative to the agent-logs folder), and any follow-up items
 
 Do not write the task log or send notifications — `build` will delegate that to `@logger`.
 

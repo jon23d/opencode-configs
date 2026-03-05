@@ -9,7 +9,7 @@ compatibility: opencode
 
 This skill requires:
 
-- **`gitea.json` at the project root** — contains `{ "repoUrl": "https://gitea.example.com/owner/repo" }`. This file lives in the application repo being worked on, not in the OpenCode config repo. A `GITEA_REPO_URL` environment variable overrides the file value if set.
+- **`agent-config.json` at the project root** — contains `{ "issue_tracker": { "provider": "gitea", "gitea": { "repo_url": "https://gitea.example.com/owner/repo" } } }`. This file lives in the application repo being worked on, not in the OpenCode config repo. A `GITEA_REPO_URL` environment variable overrides the config value if set.
 - **`GITEA_ACCESS_TOKEN`** — environment variable containing a Gitea personal access token with `issue` read/write scope. This is never stored in files.
 
 See `GITEA_SETUP.md` for step-by-step setup instructions.
@@ -63,10 +63,13 @@ Keep comments factual and brief. Examples:
 
 ## On completion
 
-When all quality gates pass and the task log is written, post a final comment summarising the outcome:
+When all quality gates pass and the PR is opened, post a final comment:
 
 ```
-✅ Complete. All quality gates passed. Task log written to agent-logs/.
+✅ Complete. All quality gates passed.
+
+PR: {pr_url}
+Task log: agent-logs/YYYY-MM-DD-{slug}/log.md
 ```
 
 **Do not close the ticket.** The user or the team manages ticket state — closing is not the agent's responsibility.

@@ -98,6 +98,7 @@ All skills live in `skills/<name>/SKILL.md`. Agents load skills on demand.
 | `project-manager` | `skills/project-manager/SKILL.md` | When managing task context — not for roadmap (roadmap removed) |
 | `gitea-issues` | `skills/gitea-issues/SKILL.md` | Loaded by `build` when `issue_tracker.provider = "gitea"` in `agent-config.json` |
 | `jira` | `skills/jira/SKILL.md` | Loaded by `build` when `issue_tracker.provider = "jira"` in `agent-config.json` |
+| `github-issues` | `skills/github-issues/SKILL.md` | Loaded by `build` when `issue_tracker.provider = "github"` in `agent-config.json` |
 | `worktrees` | `skills/worktrees/SKILL.md` | Loaded by `build` at the start of every session before implementation begins |
 
 ---
@@ -110,7 +111,7 @@ All tools live in `tools/`. Two shared library modules live in `tools/lib/`.
 
 | File | Purpose |
 |---|---|
-| `tools/lib/agent-config.ts` | Reads `agent-config.json` from the project root. Exports `getGiteaIssueConfig()` and `getGiteaHostConfig()`. |
+| `tools/lib/agent-config.ts` | Reads `agent-config.json` from the project root. Exports config helpers for all providers: `getGiteaIssueConfig()`, `getGiteaHostConfig()`, `getGithubIssueConfig()`, `getGithubHostConfig()`. |
 | `tools/lib/jira-client.ts` | Jira Cloud OAuth2 client. Exports `getJiraClient()` (handles token refresh, cloud ID resolution), `toAdf()`, `adfToText()`. |
 
 ### Gitea tools
@@ -149,12 +150,29 @@ See `JIRA_SETUP.md` for the full auth setup and re-authentication instructions.
 | `jira-upload-attachment` | Upload screenshot/file attachment |
 | `jira-search-users` | Resolve display name/email → accountId |
 
+### GitHub tools
+
+GitHub issue tools read from `agent-config.json → issue_tracker.github.repo_url`.
+The PR tool reads from `agent-config.json → git_host.github.repo_url`.
+Both respect `GITHUB_REPO_URL` env var as an override. Auth: `GITHUB_ACCESS_TOKEN`.
+GitHub Enterprise Server is supported — URL is auto-detected from `repo_url` hostname.
+See `GITHUB_SETUP.md` for full setup instructions.
+
+| Tool | Purpose |
+|---|---|
+| `github-get-issue` | Read issue + comments |
+| `github-list-issues` | List issues by state (filters PRs client-side) |
+| `github-create-issue` | Create a new issue |
+| `github-update-issue` | Update title, body, state, labels, assignees |
+| `github-add-comment` | Post a comment |
+| `github-create-pr` | Open a pull request (supports `draft` flag) |
+
 ### Other tools
 
 | Tool | Purpose |
 |---|---|
 | `send-telegram` | Send Telegram notification. Requires `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`. See `TELEGRAM_SETUP.md`. |
-| `rename-session` | Rename the current OpenCode session. Called by `build` after ticket and slug are known: `Issue #N - slug` (Gitea), `PROJ-N - slug` (Jira). Uses `sessionID` from tool context via `PATCH /session/{id}`. |
+| `rename-session` | Rename the current OpenCode session. Called by `build` after ticket and slug are known: `Issue #N - slug` (Gitea/GitHub), `PROJ-N - slug` (Jira). Uses `sessionID` from tool context via `PATCH /session/{id}`. |
 
 ---
 
@@ -193,7 +211,22 @@ Or with Jira for issues and Gitea for code hosting:
 }
 ```
 
-This file contains no secrets. Secrets stay in environment variables. See `GITEA_SETUP.md` and `JIRA_SETUP.md` for full setup instructions.
+Or with GitHub for both issues and git hosting:
+
+```json
+{
+  "issue_tracker": {
+    "provider": "github",
+    "github": { "repo_url": "https://github.com/owner/repo" }
+  },
+  "git_host": {
+    "provider": "github",
+    "github": { "repo_url": "https://github.com/owner/repo" }
+  }
+}
+```
+
+This file contains no secrets. Secrets stay in environment variables. See `GITEA_SETUP.md`, `JIRA_SETUP.md`, and `GITHUB_SETUP.md` for full setup instructions.
 
 ---
 
@@ -220,10 +253,14 @@ and role boundaries.
 **Provider-agnostic infrastructure.** devops-engineer avoids cloud-vendor lock-in
 by default. Docker is the portability layer.
 
-**PR body is the task log.** There is no separate log file. The PR body contains the
-full summary, changed files table, reviewer verdicts, embedded screenshots, and
-follow-up items. The logger sends a Telegram notification with the PR URL; that is
-its only job.
+**Two audiences, two documents.** Every task produces an `agent-logs/YYYY-MM-DD-{slug}/log.md`
+with the full agent record (implementation plan, tradeoffs, full reviewer verdicts, errors,
+follow-up reasoning, embedded screenshots). The PR body is a clean human summary pointing
+to the log. Reviewers read the PR; agents and analysts read the log.
+
+**Screenshots are committed, not uploaded.** Screenshots are saved to `agent-logs/YYYY-MM-DD-{slug}/`
+by `@frontend-engineer` and embedded in the PR body via relative paths. This works
+universally across Gitea and GitHub without any upload API.
 
 **Issue tracker is a signal, not a blocker.** Ticket tracking (Gitea or Jira) enriches
 the workflow but never stalls it. If an API call fails, the agent reports it and
@@ -250,11 +287,16 @@ See `_meta/decisions.md` for full context and history.
 - **The `worktrees` skill is always loaded** at the start of every session, before
   any issue tracker skill.
 - **The issue tracker skill is provider-specific.** `build` reads `agent-config.json`,
-  checks `issue_tracker.provider`, and loads either `gitea-issues` or `jira`.
+  checks `issue_tracker.provider`, and loads `gitea-issues`, `jira`, or `github-issues`.
 - **Session is renamed** to `Issue #N - slug` or `PROJ-N - slug` as soon as the
   ticket and slug are known (Step 1b of the worktrees skill).
-- **Commit, push, and PR are all owned by `build`.** No subagent commits. Build runs
-  `git add -A`, `git commit`, `git push`, then calls `gitea-create-pr`.
+- **Commit, push, and PR are all owned by `build`.** No subagent commits. Build writes
+  `agent-logs/{date}-{slug}/log.md`, runs `git add -A`, `git commit`, `git push`, then
+  calls the appropriate PR tool (`gitea-create-pr` or `github-create-pr`) based on
+  `git_host.provider`. A second commit follows to add the PR URL back into the log.
+- **`agent-logs/` accumulates in the project repo.** Each task leaves a folder under
+  `agent-logs/YYYY-MM-DD-{slug}/` containing `log.md` and any screenshots. These are
+  committed on the feature branch and merged with the PR.
 - **When proposing a new agent,** follow the pattern in `agents/security-reviewer.md`
   (for read-only subagents) or `agents/devops-engineer.md` (for implementing primaries).
 - **When proposing a new skill,** the skill should be self-contained — an agent should
@@ -263,3 +305,7 @@ See `_meta/decisions.md` for full context and history.
   Playwright. The config is designed to accommodate additional languages in future.
 - **Jira refresh tokens expire after 90 days of inactivity.** When expired, Jira tools
   return a clear message with re-auth instructions pointing to `JIRA_SETUP.md`.
+- **GitHub uses a PAT, not OAuth2.** No browser flow required — create a fine-grained
+  token in GitHub settings, set `GITHUB_ACCESS_TOKEN`. See `GITHUB_SETUP.md`.
+- **GitHub Enterprise Server is supported.** The tools detect it automatically from
+  the hostname in `repo_url` — no extra config needed beyond the URL.
