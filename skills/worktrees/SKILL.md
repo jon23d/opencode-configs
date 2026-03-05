@@ -119,33 +119,126 @@ When the user brings back review feedback from a PR:
 4. Post a comment on the Gitea issue noting the updated push (if a ticket is open).
 5. Leave the worktree in place for any further rounds of feedback.
 
-## On completion: push and open PR
+## On completion: build the log, push, and open PR
 
-After all quality gates pass and `@logger` confirms the task log is written:
+After all quality gates pass — reviewers, QA, devops-engineer (if applicable), and developer-advocate — follow these steps **in order** before invoking `@logger`.
 
-1. **Determine the base branch:**
-   ```bash
-   git symbolic-ref refs/remotes/origin/HEAD
-   ```
-   Strip `refs/remotes/origin/` to get the name (usually `main` or `develop`). Default to `main` if this fails.
+### 1. Collect the task context
 
-2. **Push the feature branch:**
-   ```bash
-   git push origin feature/{slug}
-   ```
+Gather from all agent reports:
 
-3. **Open a pull request** using `gitea-create-pr`:
-   - `head`: `feature/{slug}`
-   - `base`: branch from step 1
-   - `title`: ticket title or concise summary
-   - `body`: reference the ticket number if applicable, summarise what changed, note the task log location
+- Task name and ticket number (if any)
+- What was done (prose summary, 2–4 sentences)
+- Files changed (path + one-line description each)
+- Tests added
+- Reviewer verdicts (code-reviewer, security-reviewer, observability-reviewer)
+- QA verdict (if applicable)
+- Devops-engineer report (if applicable)
+- Developer-advocate update list
+- Screenshot paths (absolute paths as reported by `@frontend-engineer`)
+- Any follow-up items
 
-4. **Post the PR URL** on the Gitea issue using `gitea-add-comment` (if a ticket number is available):
-   ```
-   🔀 PR opened: {pr_url}
-   ```
+### 2. Upload screenshots
 
-5. **Leave the worktree in place.** The branch may need further changes following review. Report the PR URL to the user and let them know the worktree is still available.
+If there are screenshots and a Gitea ticket number is available, upload each screenshot to the ticket issue using `gitea-upload-attachment`:
+
+- `issue_number`: the ticket number
+- `file_path`: absolute path to the screenshot
+
+Collect the returned markdown embed string (`![filename](url)`) for each. If Gitea is not configured, skip this step.
+
+### 3. Determine the base branch
+
+```bash
+git symbolic-ref refs/remotes/origin/HEAD
+```
+
+Strip `refs/remotes/origin/` to get the branch name (usually `main` or `develop`). Default to `main` if this fails.
+
+### 4. Push the feature branch
+
+```bash
+git push origin feature/{slug}
+```
+
+Do not open the PR until the push succeeds.
+
+### 5. Compose the PR body
+
+The PR body **is** the task log. Write it in full before calling `gitea-create-pr`. Use this template:
+
+```markdown
+## Summary
+
+{2–4 sentence prose description of what was done and why}
+
+## Changes
+
+| File | Description |
+|------|-------------|
+| `path/to/file.ts` | What changed |
+
+## Tests added
+
+- `path/to/test.ts` — what it covers
+
+## Quality gates
+
+| Gate | Result |
+|------|--------|
+| code-reviewer | ✅ pass |
+| security-reviewer | ✅ pass |
+| observability-reviewer | ✅ pass |
+| QA | ✅ pass |
+| devops-engineer | ✅ pass |
+
+_Omit rows that were not applicable to this task._
+
+## Screenshots
+
+{embedded screenshot markdown, one per line — or "None" if no UI changes}
+
+## Documentation updates
+
+{list of files updated by developer-advocate, or "None"}
+
+## Follow-up items
+
+{bulleted list, or "None"}
+
+---
+
+{If a Gitea ticket exists: "Refs #N"}
+```
+
+### 6. Open the PR
+
+Call `gitea-create-pr`:
+
+- `head`: `feature/{slug}`
+- `base`: base branch from step 3
+- `title`: ticket title, or a concise imperative summary (e.g. "Fix completed_at column default")
+- `body`: the composed PR body from step 5
+
+### 7. Post the PR URL on the ticket
+
+If a Gitea ticket number is available, call `gitea-add-comment`:
+
+```
+🔀 PR opened: {pr_url}
+```
+
+### 8. Invoke logger
+
+Pass to `@logger`:
+- The PR URL
+- A one-sentence summary of what was done
+
+The logger's only remaining job is to send the Telegram notification. There is no separate log file.
+
+### 9. Leave the worktree in place
+
+Report the PR URL to the user. The worktree stays available for review feedback rounds.
 
 ## Explicit cleanup
 

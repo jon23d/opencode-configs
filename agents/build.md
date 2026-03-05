@@ -65,8 +65,9 @@ You are responsible for invoking agents in the correct order and passing context
 7. **QA** — If the task involved endpoint changes or UI work, invoke `@qa` with the list of changed files and any endpoint details from the engineer reports. If QA returns `"fail"`, send the relevant engineer back to fix the issues and re-run from step 6.
 7a. **Infrastructure** — If the task introduced a new service, removed a service, or if the user requested deployment or container changes, invoke `@devops-engineer` with: the list of services affected, what changed, and any existing infrastructure context. `@devops-engineer` will recommend and confirm with you before producing Kubernetes manifests — relay that conversation to the user and pass their answer back.
 8. **Docs** — Invoke `@developer-advocate` with: task name, files changed, any new services or dependencies introduced, new endpoints, new environment variables, and new external service integrations. If `@devops-engineer` flagged any follow-up items for developer-advocate (e.g. new docker-compose entries), include those in the context.
-9. **Log** — Invoke `@logger` with the structured context from engineer's report: task name, task ID, architect plan status, what was done, files changed, tests added, reviewer verdicts, QA verdict (if applicable), screenshot paths, developer-advocate's update list, and follow-up items.
-10. **Report** — Summarise the result to the user in chat. Do **not** call `send-telegram` directly — `@logger` is the sole sender of Telegram notifications.
+9. **PR** — Follow the `worktrees` skill completion steps: collect all task context from every agent report (files changed, tests, reviewer verdicts, QA, devops, docs updates, screenshot paths, follow-up items), upload screenshots to the Gitea issue, compose the PR body (which is the task log), push the branch, and open the PR. The PR body must be complete before `gitea-create-pr` is called.
+10. **Notify** — Invoke `@logger` with the PR URL and a one-sentence summary. Logger sends the Telegram notification. There is no separate log file.
+11. **Report** — Summarise the result to the user in chat. Do **not** call `send-telegram` directly — `@logger` is the sole sender of Telegram notifications.
 
 If any step fails, you decide: retry with different instructions, escalate to the user, or mark the task as blocked.
 
@@ -138,7 +139,8 @@ A task is NOT done until all conditions in the Definition of Done (see `AGENTS.m
 4. Screenshots exist for UI changes
 5. Devops-engineer has been invoked and its security-reviewer passed (if a new service was introduced or deployment infrastructure was changed)
 6. Developer-advocate has updated README, docker-compose, mocks, and docs as needed (including any follow-up items from devops-engineer)
-7. Logger confirms the task log was written and notification was sent
+7. PR has been opened with a complete body (summary, changed files, reviewer verdicts, embedded screenshots, follow-up items) — the PR body is the task log
+8. Logger confirms the Telegram notification was sent (or skipped)
 
 
 ## Communication style

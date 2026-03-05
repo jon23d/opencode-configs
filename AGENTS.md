@@ -54,10 +54,10 @@ A coding task is NEVER complete until all of the following are true:
 8. Screenshots have been taken of all UI changes
 9. The `@devops-engineer` agent has been invoked and its `security-reviewer` has passed (if the task introduced a new service or changed deployment infrastructure)
 10. The `@developer-advocate` agent has updated `README.md`, `docker-compose.yml`, service mocks, and `docs/` to reflect any changes from this task (including follow-up items from `@devops-engineer`)
-11. The `@logger` agent has written a task log to `agent-logs/YYYY-MM-DD-HH-MM/task-name.md`
-12. The `@logger` agent has sent a Telegram notification (or confirmed it was skipped)
+11. A pull request has been opened whose body contains: a prose summary, changed files table, tests added, all reviewer verdicts, embedded screenshots (if any UI changes), documentation updates, and follow-up items. The PR body is the task log — no separate log file is written.
+12. The `@logger` agent has sent a Telegram notification with the PR URL (or confirmed it was skipped)
 
-**Responsibility:** Items 1–3 and 4–6 are verified by the implementing engineer (`@backend-engineer`, `@frontend-engineer`, or both). Item 7 is handled by `@qa` (invoked by `build`). Item 8 is verified by `@frontend-engineer`. Item 9 is handled by `@devops-engineer` (invoked by `build` when a new service is introduced or deployment infrastructure changes). Item 10 is handled by `@developer-advocate` (invoked by `build`). Items 11–12 are handled by `@logger` (invoked by `build` after developer-advocate completes).
+**Responsibility:** Items 1–3 and 4–6 are verified by the implementing engineer (`@backend-engineer`, `@frontend-engineer`, or both). Item 7 is handled by `@qa` (invoked by `build`). Item 8 is verified by `@frontend-engineer`. Item 9 is handled by `@devops-engineer` (invoked by `build` when a new service is introduced or deployment infrastructure changes). Item 10 is handled by `@developer-advocate` (invoked by `build`). Items 11–12 are handled by `build` (PR) and `@logger` (Telegram), in that order.
 
 If you have written code and have not yet invoked all three reviewers, you have not
 finished the task. Do not summarise, do not ask what to do next, do not say the
