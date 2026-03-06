@@ -16,85 +16,9 @@ function readJiraConfig(): { base_url?: string; project_key?: string } {
   }
 }
 
-async function getValidToken(): Promise<{ token: string } | { error: string }> {
-  const existing = process.env.JIRA_ACCESS_TOKEN
-  if (existing) return { token: existing }
-
-  const refreshToken = process.env.JIRA_REFRESH_TOKEN
-  const clientId = process.env.JIRA_CLIENT_ID
-  const clientSecret = process.env.JIRA_CLIENT_SECRET
-
-  if (!refreshToken || !clientId || !clientSecret) {
-    return {
-      error:
-        "Jira not configured. Set JIRA_ACCESS_TOKEN, or set JIRA_REFRESH_TOKEN + JIRA_CLIENT_ID + JIRA_CLIENT_SECRET to enable auto-refresh. See JIRA_SETUP.md.",
-    }
-  }
-
-  const res = await fetch("https://auth.atlassian.com/oauth/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      grant_type: "refresh_token",
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: refreshToken,
-    }),
-  })
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    if (res.status === 400 || res.status === 401) {
-      return {
-        error:
-          "Your Jira refresh token has expired (tokens expire after 90 days of inactivity). " +
-          "Re-authentication is required. See JIRA_SETUP.md for step-by-step instructions.",
-      }
-    }
-    return {
-      error: `Failed to refresh Jira access token: ${res.status} ${err.error_description ?? res.statusText}`,
-    }
-  }
-
-  const data = await res.json()
-  process.env.JIRA_ACCESS_TOKEN = data.access_token
-  if (data.refresh_token) process.env.JIRA_REFRESH_TOKEN = data.refresh_token
-
-  return { token: data.access_token }
-}
-
-async function resolveCloudId(
-  baseUrl: string,
-  token: string
-): Promise<{ cloudId: string } | { error: string }> {
-  if (process.env.JIRA_CLOUD_ID) return { cloudId: process.env.JIRA_CLOUD_ID }
-
-  const res = await fetch("https://api.atlassian.com/oauth/token/accessible-resources", {
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-  })
-
-  if (!res.ok) {
-    return { error: `Failed to fetch Jira accessible resources: ${res.status} ${res.statusText}` }
-  }
-
-  const resources: { id: string; url: string; name: string }[] = await res.json()
-  const target = baseUrl.replace(/\/$/, "").toLowerCase()
-  const site = resources.find((r) => r.url.replace(/\/$/, "").toLowerCase() === target)
-
-  if (!site) {
-    const available = resources.map((r) => r.url).join(", ")
-    return {
-      error: `No Jira site found matching "${baseUrl}". Sites accessible with current token: ${available || "none"}`,
-    }
-  }
-
-  process.env.JIRA_CLOUD_ID = site.id
-  return { cloudId: site.id }
-}
-
 export async function getJiraClient(): Promise<JiraClient | { error: string }> {
   const jiraConfig = readJiraConfig()
-  const baseUrl = process.env.JIRA_BASE_URL ?? jiraConfig.base_url
+  const baseUrl = (process.env.JIRA_BASE_URL ?? jiraConfig.base_url ?? "").replace(/\/$/, "")
   const projectKey = process.env.JIRA_PROJECT_KEY ?? jiraConfig.project_key ?? ""
 
   if (!baseUrl) {
@@ -104,17 +28,23 @@ export async function getJiraClient(): Promise<JiraClient | { error: string }> {
     }
   }
 
-  const tokenResult = await getValidToken()
-  if ("error" in tokenResult) return tokenResult
+  const email = process.env.JIRA_EMAIL
+  const apiToken = process.env.JIRA_API_TOKEN
 
-  const cloudResult = await resolveCloudId(baseUrl, tokenResult.token)
-  if ("error" in cloudResult) return cloudResult
+  if (!email || !apiToken) {
+    return {
+      error:
+        "Jira credentials missing — set JIRA_EMAIL and JIRA_API_TOKEN in your shell profile. See JIRA_SETUP.md.",
+    }
+  }
+
+  const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
 
   return {
-    apiBase: `https://api.atlassian.com/ex/jira/${cloudResult.cloudId}/rest/api/3`,
+    apiBase: `${baseUrl}/rest/api/3`,
     projectKey,
     headers: {
-      Authorization: `Bearer ${tokenResult.token}`,
+      Authorization: `Basic ${credentials}`,
       "Content-Type": "application/json",
       Accept: "application/json",
     },

@@ -112,7 +112,7 @@ All tools live in `tools/`. Two shared library modules live in `tools/lib/`.
 | File | Purpose |
 |---|---|
 | `tools/lib/agent-config.ts` | Reads `agent-config.json` from the project root. Exports config helpers for all providers: `getGiteaIssueConfig()`, `getGiteaHostConfig()`, `getGithubIssueConfig()`, `getGithubHostConfig()`. |
-| `tools/lib/jira-client.ts` | Jira Cloud OAuth2 client. Exports `getJiraClient()` (handles token refresh, cloud ID resolution), `toAdf()`, `adfToText()`. |
+| `tools/lib/jira-client.ts` | Jira API token client. Exports `getJiraClient()` (Basic Auth via `JIRA_EMAIL` + `JIRA_API_TOKEN`, no OAuth2), `toAdf()`, `adfToText()`. |
 
 ### Gitea tools
 
@@ -303,8 +303,6 @@ See `_meta/decisions.md` for full context and history.
   be able to load it cold and know exactly what conventions to apply.
 - **The current tech stack** is Node.js / TypeScript, pnpm, React, PostgreSQL + Prisma,
   Playwright. The config is designed to accommodate additional languages in future.
-- **Jira refresh tokens expire after 90 days of inactivity.** When expired, Jira tools
-  return a clear message with re-auth instructions pointing to `JIRA_SETUP.md`.
 - **GitHub uses a PAT, not OAuth2.** No browser flow required — create a fine-grained
   token in GitHub settings, set `GITHUB_ACCESS_TOKEN`. See `GITHUB_SETUP.md`.
 - **GitHub Enterprise Server is supported.** The tools detect it automatically from

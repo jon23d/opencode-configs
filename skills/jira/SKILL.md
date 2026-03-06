@@ -15,9 +15,7 @@ Do not load this skill alongside `gitea-issues` or `github-issues` — use one b
 
 Before using any Jira tool, verify configuration is present. Call `jira-get-issue` with any known issue key. If it returns an error message referencing `JIRA_SETUP.md`, stop and show the user that message — do not proceed until Jira is configured.
 
-If the error mentions an **expired refresh token**, tell the user:
-
-> Your Jira session has expired. Please follow the re-authentication steps in `JIRA_SETUP.md` to get a new token pair, then restart OpenCode.
+The most common errors are missing `JIRA_EMAIL` or `JIRA_API_TOKEN` environment variables. Direct the user to `JIRA_SETUP.md` — setup takes under a minute.
 
 ## Session start
 

@@ -5,6 +5,41 @@ Add new entries in reverse-chronological order (newest first).
 
 ---
 
+## Jira auth switched from OAuth2 to API token
+
+**Date:** 2026-03-06
+**Status:** Resolved
+
+### Context
+
+The original Jira integration used 3-legged OAuth2 with a refresh token. Refresh tokens expire after 90 days of inactivity, requiring a full re-authentication flow (register OAuth app, browser redirect, manual code exchange, update env vars). This was the wrong choice for a local personal dev tool — OAuth2 3LO is designed for multi-tenant apps acting on behalf of many users, not for a single developer's local agent.
+
+### Decision
+
+Switch to **HTTP Basic Auth with a personal API token**. Atlassian's API token approach:
+
+- Tokens are created at [id.atlassian.com/manage-api-tokens](https://id.atlassian.com/manage-api-tokens) in under a minute
+- Tokens do not expire unless manually revoked
+- Auth header: `Authorization: Basic base64(email:token)`
+- API base: `{base_url}/rest/api/3` — no cloud ID resolution needed
+
+**Two environment variables replace the previous four:**
+
+| Before | After |
+|---|---|
+| `JIRA_CLIENT_ID` | ~~removed~~ |
+| `JIRA_CLIENT_SECRET` | ~~removed~~ |
+| `JIRA_REFRESH_TOKEN` | ~~removed~~ |
+| `JIRA_ACCESS_TOKEN` (optional) | ~~removed~~ |
+| — | `JIRA_EMAIL` (new) |
+| — | `JIRA_API_TOKEN` (new) |
+
+**`jira-client.ts` simplified:** `getValidToken()` and `resolveCloudId()` were removed entirely. `getJiraClient()` now just reads the two env vars, builds the Basic Auth header, and returns `{base_url}/rest/api/3` as the API base directly.
+
+**`JIRA_SETUP.md` rewritten** to reflect the new flow — 4 steps instead of 6, no curl commands, no OAuth app registration.
+
+---
+
 ## agent-logs folder; two-document model for task records
 
 **Date:** 2026-03-05
