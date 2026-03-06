@@ -14,7 +14,9 @@ export default tool({
     const { client } = result
 
     try {
-      const data = await client.issueSearch.searchForIssuesUsingJql({
+      // Use EnhancedSearch which hits GET /rest/api/3/search/jql (the current Atlassian endpoint).
+      // The older searchForIssuesUsingJql hits GET /rest/api/3/search which returns 410 Gone.
+      const data = await client.issueSearch.searchForIssuesUsingJqlEnhancedSearch({
         jql: args.jql,
         maxResults: Math.min(args.limit ?? 20, 50),
         fields: ["summary", "status", "assignee", "priority", "issuetype", "labels"],
@@ -27,7 +29,7 @@ export default tool({
           `${i.key}  [${i.fields?.status?.name ?? "?"}]  ${i.fields?.summary ?? ""}  (assignee: ${i.fields?.assignee?.displayName ?? "none"})`
       )
 
-      return [`${data.total} issue(s) — showing ${data.issues.length}`, "", ...lines].join("\n")
+      return [`Showing ${data.issues.length} issue(s)`, "", ...lines].join("\n")
     } catch (error: unknown) {
       const e = error as { status?: number; message?: string }
       return `Search failed (${e.status ?? ""}): ${e.message ?? String(error)}`
