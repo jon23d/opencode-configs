@@ -3,62 +3,33 @@ import { getJiraClient, toAdf } from "./lib/jira-client"
 
 export default tool({
   description:
-    "Create a new Jira issue in the configured project. Returns the issue key and URL. Requires Jira credentials and JIRA_PROJECT_KEY — see JIRA_SETUP.md.",
+    "Create a new Jira issue in the configured project.",
   args: {
-    summary: tool.schema.string().describe("Issue title / summary"),
-    description: tool.schema
-      .string()
-      .optional()
-      .describe("Issue body (plain text; basic paragraph formatting supported)"),
-    issue_type: tool.schema
-      .string()
-      .optional()
-      .describe('Issue type name, e.g. "Story", "Bug", "Task" (default: "Task")'),
+    title: tool.schema.string().describe("Issue summary/title"),
+    description: tool.schema.string().optional().describe("Issue description (plain text)"),
+    issue_type: tool.schema.string().optional().describe("Issue type, e.g. 'Bug', 'Story', 'Task' (default: Task)"),
     labels: tool.schema.string().optional().describe("Comma-separated labels to apply"),
-    priority: tool.schema
-      .string()
-      .optional()
-      .describe('Priority name, e.g. "Highest", "High", "Medium", "Low"'),
-    assignee_account_id: tool.schema
-      .string()
-      .optional()
-      .describe("Jira accountId of the assignee (use jira-search-users to look up)"),
   },
   async execute(args) {
-    const client = await getJiraClient()
-    if ("error" in client) return client.error
+    const result = getJiraClient()
+    if ("error" in result) return result.error
+    const { client, projectKey, host } = result
 
-    if (!client.projectKey) {
-      return "No Jira project key configured — set JIRA_PROJECT_KEY or add issue_tracker.jira.project_key to agent-config.json"
+    try {
+      const issue = await client.issues.createIssue({
+        fields: {
+          summary: args.title,
+          issuetype: { name: args.issue_type ?? "Task" },
+          project: { key: projectKey },
+          ...(args.description ? { description: toAdf(args.description) } : {}),
+          ...(args.labels ? { labels: args.labels.split(",").map((l) => l.trim()).filter(Boolean) } : {}),
+        },
+      })
+
+      return `Created ${issue.key}: ${host}/browse/${issue.key}`
+    } catch (error: unknown) {
+      const e = error as { status?: number; message?: string }
+      return `Failed to create issue: ${e.status ?? ""} ${e.message ?? String(error)}`
     }
-
-    const fields: Record<string, unknown> = {
-      project: { key: client.projectKey },
-      summary: args.summary,
-      issuetype: { name: args.issue_type ?? "Task" },
-    }
-
-    if (args.description) fields.description = toAdf(args.description)
-    if (args.labels) fields.labels = args.labels.split(",").map((l) => l.trim())
-    if (args.priority) fields.priority = { name: args.priority }
-    if (args.assignee_account_id) fields.assignee = { accountId: args.assignee_account_id }
-
-    const res = await fetch(`${client.apiBase}/issue`, {
-      method: "POST",
-      headers: client.headers,
-      body: JSON.stringify({ fields }),
-    })
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      const detail = err.errors
-        ? JSON.stringify(err.errors)
-        : err.errorMessages?.join(", ") ?? res.statusText
-      return `Failed to create issue: ${res.status} ${detail}`
-    }
-
-    const issue = await res.json()
-    const baseUrl = (process.env.JIRA_BASE_URL ?? "").replace(/\/$/, "")
-    return `Created ${issue.key}: ${args.summary}\nURL: ${baseUrl}/browse/${issue.key}`
   },
 })

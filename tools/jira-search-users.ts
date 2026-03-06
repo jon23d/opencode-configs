@@ -12,33 +12,24 @@ export default tool({
       ),
   },
   async execute(args) {
-    const client = await getJiraClient()
-    if ("error" in client) return client.error
+    const result = getJiraClient()
+    if ("error" in result) return result.error
+    const { client } = result
 
-    const params = new URLSearchParams({ query: args.query, maxResults: "10" })
-    const res = await fetch(`${client.apiBase}/user/search?${params}`, {
-      headers: client.headers,
-    })
+    try {
+      const users = await client.userSearch.findUsers({ query: args.query, maxResults: 10 })
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      return `Failed to search users: ${res.status} ${err.errorMessages?.join(", ") ?? res.statusText}`
+      if (!users.length) return `No users found matching "${args.query}"`
+
+      const lines = users.map(
+        (u) =>
+          `${u.displayName}${u.emailAddress ? ` <${u.emailAddress}>` : ""}${u.active ? "" : " (inactive)"}\n  accountId: ${u.accountId}`
+      )
+
+      return [`Users matching "${args.query}":`, "", ...lines].join("\n")
+    } catch (error: unknown) {
+      const e = error as { status?: number; message?: string }
+      return `Failed to search users: ${e.status ?? ""} ${e.message ?? String(error)}`
     }
-
-    const users: {
-      accountId: string
-      displayName: string
-      emailAddress?: string
-      active: boolean
-    }[] = await res.json()
-
-    if (!users.length) return `No users found matching "${args.query}"`
-
-    const lines = users.map(
-      (u) =>
-        `${u.displayName}${u.emailAddress ? ` <${u.emailAddress}>` : ""}${u.active ? "" : " (inactive)"}\n  accountId: ${u.accountId}`
-    )
-
-    return [`Users matching "${args.query}":`, "", ...lines].join("\n")
   },
 })

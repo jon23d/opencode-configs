@@ -23,50 +23,42 @@ export default tool({
       ),
   },
   async execute(args) {
-    const client = await getJiraClient()
-    if ("error" in client) return client.error
+    const result = getJiraClient()
+    if ("error" in result) return result.error
+    const { client } = result
 
     const results: string[] = []
 
     // Post PR URL as a comment
     if (args.pr_url) {
       const title = args.pr_title ? `[${args.pr_title}](${args.pr_url})` : args.pr_url
-      const commentBody = `🔀 PR opened: ${title}`
-      const res = await fetch(`${client.apiBase}/issue/${args.issue_key}/comment`, {
-        method: "POST",
-        headers: client.headers,
-        body: JSON.stringify({ body: toAdf(commentBody) }),
-      })
-      if (res.ok) {
-        results.push(`PR link posted as comment on ${args.issue_key}`)
-      } else {
-        const err = await res.json().catch(() => ({}))
-        results.push(
-          `Failed to post PR comment: ${res.status} ${err.errorMessages?.join(", ") ?? res.statusText}`
-        )
+      const commentBody = `PR opened: ${title}`
+      try {
+        const comment = await client.issueComments.addComment({
+          issueIdOrKey: args.issue_key,
+          body: toAdf(commentBody),
+        })
+        results.push(`PR link posted as comment on ${args.issue_key} (comment ID: ${comment.id})`)
+      } catch (error: unknown) {
+        const e = error as { status?: number; message?: string }
+        results.push(`Failed to post PR comment: ${e.status ?? ""} ${e.message ?? String(error)}`)
       }
     }
 
     // Create issue-to-issue link
     if (args.link_issue_key && args.link_type) {
-      const res = await fetch(`${client.apiBase}/issueLink`, {
-        method: "POST",
-        headers: client.headers,
-        body: JSON.stringify({
+      try {
+        await client.issueLinks.linkIssues({
           type: { name: args.link_type },
           inwardIssue: { key: args.issue_key },
           outwardIssue: { key: args.link_issue_key },
-        }),
-      })
-      if (res.ok) {
+        })
         results.push(
           `Issue link created: ${args.issue_key} "${args.link_type}" ${args.link_issue_key}`
         )
-      } else {
-        const err = await res.json().catch(() => ({}))
-        results.push(
-          `Failed to create issue link: ${res.status} ${err.errorMessages?.join(", ") ?? res.statusText}`
-        )
+      } catch (error: unknown) {
+        const e = error as { status?: number; message?: string }
+        results.push(`Failed to create issue link: ${e.status ?? ""} ${e.message ?? String(error)}`)
       }
     }
 

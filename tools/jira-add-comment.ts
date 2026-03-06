@@ -11,21 +11,19 @@ export default tool({
       .describe("Comment text (plain text; basic paragraph formatting supported)"),
   },
   async execute(args) {
-    const client = await getJiraClient()
-    if ("error" in client) return client.error
+    const result = getJiraClient()
+    if ("error" in result) return result.error
+    const { client } = result
 
-    const res = await fetch(`${client.apiBase}/issue/${args.issue_key}/comment`, {
-      method: "POST",
-      headers: client.headers,
-      body: JSON.stringify({ body: toAdf(args.body) }),
-    })
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      return `Failed to add comment to ${args.issue_key}: ${res.status} ${err.errorMessages?.join(", ") ?? res.statusText}`
+    try {
+      const comment = await client.issueComments.addComment({
+        issueIdOrKey: args.issue_key,
+        body: toAdf(args.body),
+      })
+      return `Comment posted on ${args.issue_key} (comment ID: ${comment.id})`
+    } catch (error: unknown) {
+      const e = error as { status?: number; message?: string }
+      return `Failed to add comment to ${args.issue_key}: ${e.status ?? ""} ${e.message ?? String(error)}`
     }
-
-    const comment = await res.json()
-    return `Comment posted on ${args.issue_key} (comment ID: ${comment.id})`
   },
 })

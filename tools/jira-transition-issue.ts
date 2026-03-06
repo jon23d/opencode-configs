@@ -14,52 +14,41 @@ export default tool({
       ),
   },
   async execute(args) {
-    const client = await getJiraClient()
-    if ("error" in client) return client.error
+    const result = getJiraClient()
+    if ("error" in result) return result.error
+    const { client } = result
 
-    // Fetch available transitions
-    const transRes = await fetch(`${client.apiBase}/issue/${args.issue_key}/transitions`, {
-      headers: client.headers,
-    })
+    try {
+      // Fetch available transitions
+      const data = await client.issues.getTransitions({ issueIdOrKey: args.issue_key })
+      const transitions = data.transitions ?? []
 
-    if (!transRes.ok) {
-      const err = await transRes.json().catch(() => ({}))
-      return `Failed to fetch transitions for ${args.issue_key}: ${transRes.status} ${err.errorMessages?.join(", ") ?? transRes.statusText}`
+      // List mode
+      if (!args.transition_name) {
+        const list = transitions.map((t) => `- ${t.name}`).join("\n")
+        return `Available transitions for ${args.issue_key}:\n${list}`
+      }
+
+      // Find matching transition (case-insensitive)
+      const match = transitions.find(
+        (t) => (t.name ?? "").toLowerCase() === args.transition_name!.toLowerCase()
+      )
+
+      if (!match) {
+        const available = transitions.map((t) => t.name).join(", ")
+        return `Transition "${args.transition_name}" not found for ${args.issue_key}. Available: ${available}`
+      }
+
+      // Apply transition
+      await client.issues.transitionIssue({
+        issueIdOrKey: args.issue_key,
+        transition: { id: match.id },
+      })
+
+      return `${args.issue_key} transitioned to "${args.transition_name}"`
+    } catch (error: unknown) {
+      const e = error as { status?: number; message?: string }
+      return `Failed to transition ${args.issue_key}: ${e.status ?? ""} ${e.message ?? String(error)}`
     }
-
-    const { transitions } = await transRes.json()
-
-    // List mode
-    if (!args.transition_name) {
-      const list = transitions
-        .map((t: { id: string; name: string }) => `- ${t.name}`)
-        .join("\n")
-      return `Available transitions for ${args.issue_key}:\n${list}`
-    }
-
-    // Find matching transition (case-insensitive)
-    const match = transitions.find(
-      (t: { name: string }) =>
-        t.name.toLowerCase() === args.transition_name!.toLowerCase()
-    )
-
-    if (!match) {
-      const available = transitions.map((t: { name: string }) => t.name).join(", ")
-      return `Transition "${args.transition_name}" not found for ${args.issue_key}. Available: ${available}`
-    }
-
-    // Apply transition
-    const res = await fetch(`${client.apiBase}/issue/${args.issue_key}/transitions`, {
-      method: "POST",
-      headers: client.headers,
-      body: JSON.stringify({ transition: { id: match.id } }),
-    })
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      return `Failed to transition ${args.issue_key}: ${res.status} ${err.errorMessages?.join(", ") ?? res.statusText}`
-    }
-
-    return `${args.issue_key} transitioned to "${args.transition_name}"`
   },
 })

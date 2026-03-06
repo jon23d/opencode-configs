@@ -1,11 +1,6 @@
+import { Version3Client } from "jira.js"
 import { readFileSync } from "fs"
 import { join } from "path"
-
-export interface JiraClient {
-  apiBase: string
-  projectKey: string
-  headers: Record<string, string>
-}
 
 function readJiraConfig(): { base_url?: string; project_key?: string } {
   try {
@@ -16,20 +11,21 @@ function readJiraConfig(): { base_url?: string; project_key?: string } {
   }
 }
 
-export async function getJiraClient(): Promise<JiraClient | { error: string }> {
+export function getJiraClient():
+  | { client: Version3Client; projectKey: string; host: string }
+  | { error: string } {
   const jiraConfig = readJiraConfig()
-  const baseUrl = (process.env.JIRA_BASE_URL ?? jiraConfig.base_url ?? "").replace(/\/$/, "")
+  const host = (process.env.JIRA_BASE_URL ?? jiraConfig.base_url ?? "").replace(/\/$/, "")
   const projectKey = process.env.JIRA_PROJECT_KEY ?? jiraConfig.project_key ?? ""
+  const email = process.env.JIRA_EMAIL
+  const apiToken = process.env.JIRA_API_TOKEN
 
-  if (!baseUrl) {
+  if (!host) {
     return {
       error:
         "Jira not configured — set JIRA_BASE_URL or add issue_tracker.jira.base_url to agent-config.json. See JIRA_SETUP.md.",
     }
   }
-
-  const email = process.env.JIRA_EMAIL
-  const apiToken = process.env.JIRA_API_TOKEN
 
   if (!email || !apiToken) {
     return {
@@ -38,17 +34,12 @@ export async function getJiraClient(): Promise<JiraClient | { error: string }> {
     }
   }
 
-  const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64")
+  const client = new Version3Client({
+    host,
+    authentication: { basic: { email, apiToken } },
+  })
 
-  return {
-    apiBase: `${baseUrl}/rest/api/3`,
-    projectKey,
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-  }
+  return { client, projectKey, host }
 }
 
 /** Convert plain text to Atlassian Document Format (ADF) for Jira API v3 */

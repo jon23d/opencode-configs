@@ -1,0 +1,9 @@
+{
+  "name": "opencode-config",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "jira.js": "^4.0.0"
+  }
+}

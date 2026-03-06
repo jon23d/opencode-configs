@@ -13,22 +13,22 @@ export default tool({
       ),
   },
   async execute(args) {
-    const client = await getJiraClient()
-    if ("error" in client) return client.error
+    const result = getJiraClient()
+    if ("error" in result) return result.error
+    const { client } = result
 
-    const res = await fetch(`${client.apiBase}/issue/${args.issue_key}/assignee`, {
-      method: "PUT",
-      headers: client.headers,
-      body: JSON.stringify({ accountId: args.account_id || null }),
-    })
+    try {
+      await client.issues.assignIssue({
+        issueIdOrKey: args.issue_key,
+        accountId: args.account_id || null,
+      })
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      return `Failed to assign ${args.issue_key}: ${res.status} ${err.errorMessages?.join(", ") ?? res.statusText}`
+      return args.account_id
+        ? `${args.issue_key} assigned to accountId ${args.account_id}`
+        : `${args.issue_key} unassigned`
+    } catch (error: unknown) {
+      const e = error as { status?: number; message?: string }
+      return `Failed to assign ${args.issue_key}: ${e.status ?? ""} ${e.message ?? String(error)}`
     }
-
-    return args.account_id
-      ? `${args.issue_key} assigned to accountId ${args.account_id}`
-      : `${args.issue_key} unassigned`
   },
 })
