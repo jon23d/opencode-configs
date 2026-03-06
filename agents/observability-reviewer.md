@@ -7,20 +7,6 @@ tools:
   write: false
   edit: false
   bash: false
-permission:
-  external_directory: allow
-  read: allow
-  edit: deny
-  bash:
-    "*": deny
-    "cat *": allow
-    "ls *": allow
-    "find *": allow
-    "grep *": allow
-    "git log *": allow
-    "git diff *": allow
-    "git status": allow
-  webfetch: deny
 ---
 
 ## Agent contract

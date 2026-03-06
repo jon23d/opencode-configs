@@ -3,6 +3,10 @@
   "permission": {
     "read": "allow",
     "write": "allow",
-    "external_directory": "allow"
+    "edit": "allow",
+    "external_directory": "allow",
+    "bash": "allow",
+    "task": "allow",
+    "webfetch": "allow"
   }
 }

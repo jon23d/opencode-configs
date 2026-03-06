@@ -15,7 +15,7 @@ export default tool({
     const client = await getJiraClient()
     if ("error" in client) return client.error
 
-    const res = await fetch(`${client.apiBase}/search`, {
+    const res = await fetch(`${client.apiBase}/issue/search`, {
       method: "POST",
       headers: client.headers,
       body: JSON.stringify({
@@ -27,7 +27,7 @@ export default tool({
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      return `Search failed: ${res.status} ${err.errorMessages?.join(", ") ?? res.statusText}`
+      return `Search failed (${res.status}): ${err.errorMessages?.join(", ") ?? err.message ?? res.statusText}`
     }
 
     const data = await res.json()

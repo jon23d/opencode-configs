@@ -8,12 +8,6 @@ tools:
   edit: true
   bash: true
   task: true
-permission:
-  external_directory: allow
-  read: allow
-  edit: allow
-  task:
-    "*": allow
 ---
 
 ## Agent contract

@@ -4,22 +4,6 @@ mode: subagent
 model: github-copilot/claude-sonnet-4.6
 temperature: 0.15
 color: "#6366f1"
-permission:
-  external_directory: allow
-  read: allow
-  edit: deny
-  bash:
-    "*": deny
-    "cat *": allow
-    "ls *": allow
-    "find *": allow
-    "grep *": allow
-    "git log *": allow
-    "git diff *": allow
-    "git status": allow
-  task:
-    "*": deny
-    "explore": allow
 ---
 
 ## Agent contract

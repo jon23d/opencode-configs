@@ -5,16 +5,6 @@ model: github-copilot/claude-sonnet-4.6
 temperature: 0.2
 color: "#06b6d4"
 hidden: true
-permission:
-  external_directory: allow
-  read: allow
-  edit: allow
-  bash:
-    "*": deny
-    "cat *": allow
-    "ls *": allow
-    "find *": allow
-    "grep *": allow
 ---
 
 ## Agent contract

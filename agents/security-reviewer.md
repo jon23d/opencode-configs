@@ -6,20 +6,6 @@ temperature: 0.1
 tools:
   write: false
   edit: false
-permission:
-  external_directory: allow
-  read: allow
-  edit: deny
-  webfetch: deny
-  bash:
-    "*": deny
-    "cat *": allow
-    "ls *": allow
-    "find *": allow
-    "grep *": allow
-    "git log *": allow
-    "git diff *": allow
-    "git status": allow
 ---
 
 ## Agent contract

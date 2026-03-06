@@ -4,23 +4,6 @@ mode: primary
 model: github-copilot/claude-sonnet-4.6
 temperature: 0.2
 color: "#f59e0b"
-permission:
-  external_directory: allow
-  read: allow
-  edit: deny
-  bash:
-    "*": deny
-    "mkdir -p ~/worktrees/*": allow
-    "git init": allow
-    "git -C . rev-parse *": allow
-    "git worktree *": allow
-    "git symbolic-ref *": allow
-    "git add *": allow
-    "git commit *": allow
-    "git push *": allow
-    "cp .env *": allow
-  task:
-    "*": allow
 ---
 
 ## Agent contract
