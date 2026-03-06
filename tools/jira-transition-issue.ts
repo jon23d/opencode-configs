@@ -1,9 +1,9 @@
 import { tool } from "@opencode-ai/plugin"
-import { getJiraClient } from "./lib/jira-client"
+import { getJiraClient, resolveAccountIdByEmail } from "./lib/jira-client"
 
 export default tool({
   description:
-    "Change the status of a Jira issue by applying a workflow transition. Omit transition_name to list all available transitions for the issue first. Requires Jira credentials — see JIRA_SETUP.md.",
+    "Change the status of a Jira issue by applying a workflow transition. When transitioning to 'In Progress', automatically assigns the issue to the current user (JIRA_EMAIL). Omit transition_name to list all available transitions. Requires Jira credentials — see JIRA_SETUP.md.",
   args: {
     issue_key: tool.schema.string().describe("Issue key, e.g. 'PROJ-123'"),
     transition_name: tool.schema
@@ -16,7 +16,7 @@ export default tool({
   async execute(args) {
     const result = getJiraClient()
     if ("error" in result) return result.error
-    const { client } = result
+    const { client, currentUserEmail } = result
 
     try {
       // Fetch available transitions
@@ -45,7 +45,19 @@ export default tool({
         transition: { id: match.id },
       })
 
-      return `${args.issue_key} transitioned to "${args.transition_name}"`
+      const notes: string[] = [`${args.issue_key} transitioned to "${args.transition_name}"`]
+
+      // Auto-assign to current user when moving to In Progress
+      const isInProgress = args.transition_name.toLowerCase() === "in progress"
+      if (isInProgress && currentUserEmail) {
+        const accountId = await resolveAccountIdByEmail(client, currentUserEmail)
+        if (accountId) {
+          await client.issues.assignIssue({ issueIdOrKey: args.issue_key, accountId })
+          notes.push(`Assigned to ${currentUserEmail}`)
+        }
+      }
+
+      return notes.join("\n")
     } catch (error: unknown) {
       const e = error as { status?: number; message?: string }
       return `Failed to transition ${args.issue_key}: ${e.status ?? ""} ${e.message ?? String(error)}`

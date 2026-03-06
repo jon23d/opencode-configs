@@ -12,13 +12,15 @@ function readJiraConfig(): { base_url?: string; project_key?: string } {
 }
 
 export function getJiraClient():
-  | { client: Version3Client; projectKey: string; host: string }
+  | { client: Version3Client; projectKey: string; host: string; currentUserEmail: string | null }
   | { error: string } {
   const jiraConfig = readJiraConfig()
   const host = (process.env.JIRA_BASE_URL ?? jiraConfig.base_url ?? "").replace(/\/$/, "")
   const projectKey = process.env.JIRA_PROJECT_KEY ?? jiraConfig.project_key ?? ""
   const email = process.env.JIRA_EMAIL
   const apiToken = process.env.JIRA_API_TOKEN
+  // The auth email is the current user
+  const currentUserEmail = process.env.JIRA_EMAIL ?? null
 
   if (!host) {
     return {
@@ -39,7 +41,26 @@ export function getJiraClient():
     authentication: { basic: { email, apiToken } },
   })
 
-  return { client, projectKey, host }
+  return { client, projectKey, host, currentUserEmail }
+}
+
+/**
+ * Resolve the accountId for a given email by searching Jira users.
+ * Returns null if not found.
+ */
+export async function resolveAccountIdByEmail(
+  client: Version3Client,
+  email: string
+): Promise<string | null> {
+  try {
+    const users = await client.userSearch.findUsers({ query: email, maxResults: 5 })
+    const match = users.find(
+      (u) => u.emailAddress?.toLowerCase() === email.toLowerCase()
+    ) ?? users[0]
+    return match?.accountId ?? null
+  } catch {
+    return null
+  }
 }
 
 /** Convert plain text to Atlassian Document Format (ADF) for Jira API v3 */

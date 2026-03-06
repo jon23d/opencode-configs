@@ -89,7 +89,7 @@ No cloud ID resolution, no OAuth token exchange, no session state.
 
 | Variable | Required | Description |
 |---|---|---|
-| `JIRA_EMAIL` | Yes | Your Atlassian account email |
+| `JIRA_EMAIL` | Yes | Your Atlassian account email. Also used as your identity — issues are auto-assigned to this account when transitioning to In Progress, and `jira-assign-issue` accepts `"me"` to assign to this address. |
 | `JIRA_API_TOKEN` | Yes | API token from id.atlassian.com/manage-api-tokens |
 | `JIRA_BASE_URL` | No | Overrides `agent-config.json` base_url at runtime |
 | `JIRA_PROJECT_KEY` | No | Overrides `agent-config.json` project_key at runtime |
