@@ -36,7 +36,7 @@ export default tool({
       try {
         const comment = await client.issueComments.addComment({
           issueIdOrKey: args.issue_key,
-          body: toAdf(commentBody),
+          comment: toAdf(commentBody),
         })
         results.push(`PR link posted as comment on ${args.issue_key} (comment ID: ${comment.id})`)
       } catch (error: unknown) {

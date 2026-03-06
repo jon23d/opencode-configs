@@ -18,7 +18,7 @@ export default tool({
     try {
       const comment = await client.issueComments.addComment({
         issueIdOrKey: args.issue_key,
-        body: toAdf(args.body),
+        comment: toAdf(args.body),
       })
       return `Comment posted on ${args.issue_key} (comment ID: ${comment.id})`
     } catch (error: unknown) {

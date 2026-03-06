@@ -40,7 +40,7 @@ export default tool({
       }
 
       // Apply transition
-      await client.issues.transitionIssue({
+      await client.issues.doTransition({
         issueIdOrKey: args.issue_key,
         transition: { id: match.id },
       })
